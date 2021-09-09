@@ -1,4 +1,6 @@
 github.com/holiman/uint256 v1.2.0 h1:gpSYcPLWGv4sG43I2mVLiDZCNDh/EpGjSk8tmtxitHM=
 github.com/holiman/uint256 v1.2.0/go.mod h1:y4ga/t+u+Xwd7CpDgZESaRcWy0I7XMlTMA25ApIH5Jw=
-github.com/openrelayxyz/plugeth-utils v0.0.3 h1:Jq+yauQerhwbBUP0MXrgsagSmkliqKQUs3zu0494JA4=
-github.com/openrelayxyz/plugeth-utils v0.0.3/go.mod h1:+FQQKFpUdNMHCbdg0Ug3/hSvEcSbhA5fN+7fM0RfN/U=
+github.com/openrelayxyz/plugeth-utils v0.0.4 h1:bRWY9ebYxon0fFEJgUWx1m9i6UjOIiu1CpEcEsi6LQI=
+github.com/openrelayxyz/plugeth-utils v0.0.4/go.mod h1:+FQQKFpUdNMHCbdg0Ug3/hSvEcSbhA5fN+7fM0RfN/U=
+gopkg.in/urfave/cli.v1 v1.20.0 h1:NdAVW6RYxDif9DhDHaAortIu956m2c0v+09AZBPTbE0=
+gopkg.in/urfave/cli.v1 v1.20.0/go.mod h1:vuBzUtMdQeixQj8LVd+/98pzhxNGQoyuPBlsXHOQNO0=
