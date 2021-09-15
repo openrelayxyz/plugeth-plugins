@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"time"
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -14,6 +16,26 @@ type myservice struct{}
 func (*myservice) Hello() string {
 	return "Hello world"
 }
+
+
+func (*myservice) Timer(ctx context.Context) (<-chan int64, error) {
+	ticker := time.NewTicker(time.Second)
+	ch := make(chan int64)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				close(ch)
+				return
+			case t := <-ticker.C:
+				ch <- t.UnixNano()
+			}
+		}
+	}()
+	return ch, nil
+}
+
 
 func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
