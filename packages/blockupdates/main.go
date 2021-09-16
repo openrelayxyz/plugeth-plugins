@@ -1,0 +1,326 @@
+package main
+
+import (
+	"strings"
+	"bytes"
+	"fmt"
+	"context"
+	"time"
+	"encoding/json"
+	lru "github.com/hashicorp/golang-lru"
+	"github.com/openrelayxyz/plugeth-utils/core"
+	"github.com/openrelayxyz/plugeth-utils/restricted"
+	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
+	"github.com/openrelayxyz/plugeth-utils/restricted/types"
+	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
+	"gopkg.in/urfave/cli.v1"
+	"io"
+)
+
+
+var (
+	pl core.PluginLoader
+	backend restricted.Backend
+	lastBlock core.Hash
+	cache *lru.Cache
+	snapshotFlagName = "snapshot"
+	log core.Logger
+	blockEvents core.Feed
+)
+
+
+// stateUpdate will be used to track state updates
+type stateUpdate struct {
+	Destructs map[core.Hash]struct{}
+	Accounts map[core.Hash][]byte
+	Storage map[core.Hash]map[core.Hash][]byte
+}
+
+
+// kvpair is used for RLP encoding of maps, as maps cannot be RLP encoded directly
+type kvpair struct {
+	Key core.Hash
+	Value []byte
+}
+
+// storage is used for RLP encoding two layers of maps, as maps cannot be RLP encoded directly
+type storage struct {
+	Account core.Hash
+	Data []kvpair
+}
+
+// storedStateUpdate is an RLP encodable version of stateUpdate
+type storedStateUpdate struct {
+	Destructs []core.Hash
+	Accounts	[]kvpair
+	Storage	 []storage
+}
+
+
+// MarshalJSON represents the stateUpdate as JSON for RPC calls
+func (su *stateUpdate) MarshalJSON() ([]byte, error) {
+	result := make(map[string]interface{})
+	destructs := make([]core.Hash, 0, len(su.Destructs))
+	for k := range su.Destructs {
+		destructs = append(destructs, k)
+	}
+	result["destructs"] = destructs
+	accounts := make(map[string]hexutil.Bytes)
+	for k, v := range su.Accounts {
+		accounts[k.String()] = hexutil.Bytes(v)
+	}
+	result["accounts"] = accounts
+	storage := make(map[string]map[string]hexutil.Bytes)
+	for m, s := range su.Storage {
+		storage[m.String()] = make(map[string]hexutil.Bytes)
+		for k, v := range s {
+			storage[m.String()][k.String()] = hexutil.Bytes(v)
+		}
+	}
+	result["storage"] = storage
+	return json.Marshal(result)
+}
+
+// EncodeRLP converts the stateUpdate to a storedStateUpdate, and RLP encodes the result for storage
+func (su *stateUpdate) EncodeRLP(w io.Writer) error {
+	destructs := make([]core.Hash, 0, len(su.Destructs))
+	for k := range su.Destructs {
+		destructs = append(destructs, k)
+	}
+	accounts := make([]kvpair, 0, len(su.Accounts))
+	for k, v := range su.Accounts {
+		accounts = append(accounts, kvpair{k, v})
+	}
+	s := make([]storage, 0, len(su.Storage))
+	for a, m := range su.Storage {
+		accountStorage := storage{a, make([]kvpair, 0, len(m))}
+		for k, v := range m {
+			accountStorage.Data = append(accountStorage.Data, kvpair{k, v})
+		}
+		s = append(s, accountStorage)
+	}
+	return rlp.Encode(w, storedStateUpdate{destructs, accounts, s})
+}
+
+// DecodeRLP takes a byte stream, decodes it to a storedStateUpdate, the n converts that into a stateUpdate object
+func (su *stateUpdate) DecodeRLP(s *rlp.Stream) error {
+	ssu := storedStateUpdate{}
+	if err := s.Decode(&ssu); err != nil { return err }
+	su.Destructs = make(map[core.Hash]struct{})
+	for _, s := range ssu.Destructs {
+		su.Destructs[s] = struct{}{}
+	}
+	su.Accounts = make(map[core.Hash][]byte)
+	for _, kv := range ssu.Accounts {
+		su.Accounts[kv.Key] = kv.Value
+	}
+	su.Storage = make(map[core.Hash]map[core.Hash][]byte)
+	for _, s := range ssu.Storage {
+		su.Storage[s.Account] = make(map[core.Hash][]byte)
+		for _, kv := range s.Data {
+			su.Storage[s.Account][kv.Key] = kv.Value
+		}
+	}
+	return nil
+}
+
+var (
+	httpApiFlagName = "http.api"
+	wsApiFlagName = "ws.api"
+)
+
+// Initialize does initial setup of variables as the plugin is loaded.
+func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+	log = logger
+	pl = loader
+	blockEvents = pl.GetFeed()
+	cache, _ = lru.New(128) // TODO: Make size configurable
+	if !ctx.GlobalBool(snapshotFlagName) {
+		log.Warn("Snapshots are required for StateUpdate plugins, but are currently disabled. State Updates will be unavailable")
+	}
+	v := ctx.GlobalString(httpApiFlagName)
+	if v != "" {
+		ctx.GlobalSet(httpApiFlagName, v+",plugeth")
+	} else if !strings.Contains(v, "plugeth") {
+		ctx.GlobalSet(httpApiFlagName, "eth,net,web3,plugeth")
+	}
+	v = ctx.GlobalString(wsApiFlagName)
+	if v != "" {
+		ctx.GlobalSet(wsApiFlagName, v+",plugeth")
+	} else if !strings.Contains(v, "plugeth") {
+		ctx.GlobalSet(wsApiFlagName, "eth,net,web3,plugeth")
+	}
+	log.Info("Loaded block updater plugin")
+}
+
+
+// InitializeNode is invoked by the plugin loader when the node and Backend are
+// ready. We will track the backend to provide access to blocks and other
+// useful information.
+func InitializeNode(stack core.Node, b restricted.Backend) {
+	backend = b
+	log.Info("Initialized node block updater plugin")
+}
+
+
+// StateUpdate gives us updates about state changes made in each block. We
+// cache them for short term use, and write them to disk for the longer term.
+func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.Hash]struct{}, accounts map[core.Hash][]byte, storage map[core.Hash]map[core.Hash][]byte) {
+	su := &stateUpdate{
+		Destructs: destructs,
+		Accounts: accounts,
+		Storage: storage,
+	}
+	cache.Add(blockRoot, su)
+	data, _ := rlp.EncodeToBytes(su)
+	backend.ChainDb().Put(append([]byte("su"), blockRoot.Bytes()...), data)
+}
+
+// AppendAncient removes our state update records from leveldb as the
+// corresponding blocks are moved from leveldb to the ancients database. At
+// some point in the future, we may want to look at a way to move the state
+// updates to an ancients table of their own for longer term retention.
+func AppendAncient(number uint64, hash, headerBytes, body, receipts, td []byte) {
+	header := new(types.Header)
+	if err := rlp.Decode(bytes.NewReader(headerBytes), header); err != nil {
+		log.Warn("Could not decode ancient header", "block", number)
+		return
+	}
+	for backend == nil {
+		time.Sleep(250 * time.Millisecond)
+	}
+	backend.ChainDb().Delete(append([]byte("su"), header.Root.Bytes()...))
+}
+
+
+// NewHead is invoked when a new block becomes the latest recognized block. We
+// use this to notify the blockEvents channel of new blocks, as well as invoke
+// the BlockUpdates hook on downstream plugins.
+// TODO: We're not necessarily handling reorgs properly, which may result in
+// some blocks not being emitted through this hook.
+func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte) {
+	if pl == nil {
+		log.Warn("Attempting to emit NewHead, but default PluginLoader has not been initialized")
+		return
+	}
+	var block types.Block
+	if err := rlp.DecodeBytes(blockBytes, &block); err != nil {
+		log.Error("Failed to decode block", "hash", hash, "err", err)
+		return
+	}
+	logs := make([]*types.Log, len(logsBytes))
+	for i, logBytes := range logsBytes {
+		l := types.Log{}
+		if err := rlp.DecodeBytes(logBytes, &l); err != nil {
+			log.Error("Failed to decode log", "hash", hash, "logindex", i, "err", err)
+			return
+		}
+		logs[i] = &l
+	}
+
+	result, err := blockUpdates(context.Background(), &block)
+	if err != nil {
+		log.Error("Could not serialize block", "err", err, "hash", block.Hash())
+		return
+	}
+	blockEvents.Send(result)
+
+	receipts := result["receipts"].(types.Receipts)
+	su := result["stateUpdates"].(*stateUpdate)
+	fnList := pl.Lookup("BlockUpdates", func(item interface{}) bool {
+    _, ok := item.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte))
+    return ok
+  })
+  for _, fni := range fnList {
+    if fn, ok := fni.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte)); ok {
+      fn(&block, logs, receipts, su.Destructs, su.Accounts, su.Storage)
+    }
+  }
+}
+
+
+// BlockUpdates is a service that lets clients query for block updates for a
+// given block by hash or number, or subscribe to new block upates.
+type BlockUpdates struct{
+	backend restricted.Backend
+}
+
+// blockUpdate handles the serialization of a block
+func blockUpdates(ctx context.Context, block *types.Block) (map[string]interface{}, error)	{
+	result, err := RPCMarshalBlock(block, true, true)
+	if err != nil { return nil, err }
+	receiptBytes, err := backend.GetReceipts(ctx, block.Hash())
+	if err != nil { return nil, err }
+	var receipts types.Receipts
+	if err := json.Unmarshal(receiptBytes, &receipts); err != nil { return nil, err }
+	result["receipts"] = receipts
+	if v, ok := cache.Get(block.Root()); ok {
+		result["stateUpdates"] = v
+		return result, nil
+	}
+	data, err := backend.ChainDb().Get(append([]byte("su"), block.Root().Bytes()...))
+	if err != nil { return nil, fmt.Errorf("State Updates unavailable for block %#x", block.Hash())}
+	su := &stateUpdate{}
+	if err := rlp.DecodeBytes(data, su); err != nil { return nil, fmt.Errorf("State updates unavailable for block %#x", block.Hash()) }
+	result["stateUpdates"] = su
+	cache.Add(block.Root(), su)
+	return result, nil
+}
+
+// BlockUpdatesByNumber retrieves a block by number, gets receipts and state
+// updates, and serializes the response.
+func (b *BlockUpdates) BlockUpdatesByNumber(ctx context.Context, number restricted.BlockNumber) (map[string]interface{}, error) {
+	blockBytes, err := b.backend.BlockByNumber(ctx, int64(number))
+	if err != nil { return nil, err }
+	var block types.Block
+	if err := rlp.DecodeBytes(blockBytes, &block); err != nil { return nil, err }
+	return blockUpdates(ctx, &block)
+}
+
+// BlockUpdatesByHash retrieves a block by hash, gets receipts and state
+// updates, and serializes the response.
+func (b *BlockUpdates) BlockUpdatesByHash(ctx context.Context, hash core.Hash) (map[string]interface{}, error) {
+	blockBytes, err := b.backend.BlockByHash(ctx, hash)
+	if err != nil { return nil, err }
+	var block types.Block
+	if err := rlp.DecodeBytes(blockBytes, &block); err != nil { return nil, err }
+	return blockUpdates(ctx, &block)
+}
+
+
+// BlockUpdates allows clients to subscribe to notifications of new blocks
+// along with receipts and state updates.
+func (b *BlockUpdates) BlockUpdates(ctx context.Context) (<-chan map[string]interface{}, error) {
+	blockDataChan := make(chan map[string]interface{}, 1000)
+	ch := make(chan map[string]interface{}, 1000)
+	sub := blockEvents.Subscribe(blockDataChan)
+	go func() {
+		log.Info("BlockUpdates subscription setup")
+		defer log.Info("BlockUpdates subscription closed")
+		for {
+			select {
+			case <-ctx.Done():
+				sub.Unsubscribe()
+				close(ch)
+				close(blockDataChan)
+				return
+			case b := <-blockDataChan:
+				ch <- b
+			}
+		}
+	}()
+	return ch, nil
+}
+
+
+// GetAPIs exposes the BlockUpdates service under the cardinal namespace.
+func GetAPIs(stack core.Node, backend restricted.Backend) []core.API {
+	return []core.API{
+	 {
+		 Namespace: "plugeth",
+		 Version:	 "1.0",
+		 Service:	 &BlockUpdates{backend},
+		 Public:		true,
+	 },
+ }
+}
