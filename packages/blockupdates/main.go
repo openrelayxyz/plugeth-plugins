@@ -34,6 +34,7 @@ type stateUpdate struct {
 	Destructs map[core.Hash]struct{}
 	Accounts map[core.Hash][]byte
 	Storage map[core.Hash]map[core.Hash][]byte
+	Code map[core.Hash][]byte
 }
 
 
@@ -54,6 +55,7 @@ type storedStateUpdate struct {
 	Destructs []core.Hash
 	Accounts	[]kvpair
 	Storage	 []storage
+	Code	[]kvpair
 }
 
 
@@ -78,6 +80,11 @@ func (su *stateUpdate) MarshalJSON() ([]byte, error) {
 		}
 	}
 	result["storage"] = storage
+	code := make(map[string]hexutil.Bytes)
+	for k, v := range su.Code {
+		code[k.String()] = hexutil.Bytes(v)
+	}
+	result["code"] = code
 	return json.Marshal(result)
 }
 
@@ -99,7 +106,11 @@ func (su *stateUpdate) EncodeRLP(w io.Writer) error {
 		}
 		s = append(s, accountStorage)
 	}
-	return rlp.Encode(w, storedStateUpdate{destructs, accounts, s})
+	code := make([]kvpair, 0, len(su.Code))
+	for k, v := range su.Code {
+		code = append(code, kvpair{k, v})
+	}
+	return rlp.Encode(w, storedStateUpdate{destructs, accounts, s, code})
 }
 
 // DecodeRLP takes a byte stream, decodes it to a storedStateUpdate, the n converts that into a stateUpdate object
@@ -120,6 +131,10 @@ func (su *stateUpdate) DecodeRLP(s *rlp.Stream) error {
 		for _, kv := range s.Data {
 			su.Storage[s.Account][kv.Key] = kv.Value
 		}
+	}
+	su.Code = make(map[core.Hash][]byte)
+	for _, kv := range ssu.Code {
+		su.Code[kv.Key] = kv.Value
 	}
 	return nil
 }
@@ -165,11 +180,12 @@ func InitializeNode(stack core.Node, b restricted.Backend) {
 
 // StateUpdate gives us updates about state changes made in each block. We
 // cache them for short term use, and write them to disk for the longer term.
-func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.Hash]struct{}, accounts map[core.Hash][]byte, storage map[core.Hash]map[core.Hash][]byte) {
+func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.Hash]struct{}, accounts map[core.Hash][]byte, storage map[core.Hash]map[core.Hash][]byte, codeUpdates map[core.Hash][]byte) {
 	su := &stateUpdate{
 		Destructs: destructs,
 		Accounts: accounts,
 		Storage: storage,
+		Code: codeUpdates,
 	}
 	cache.Add(blockRoot, su)
 	data, _ := rlp.EncodeToBytes(su)
@@ -191,7 +207,6 @@ func AppendAncient(number uint64, hash, headerBytes, body, receipts, td []byte) 
 	}
 	backend.ChainDb().Delete(append([]byte("su"), header.Root.Bytes()...))
 }
-
 
 // NewHead is invoked when a new block becomes the latest recognized block. We
 // use this to notify the blockEvents channel of new blocks, as well as invoke
@@ -228,12 +243,12 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte) {
 	receipts := result["receipts"].(types.Receipts)
 	su := result["stateUpdates"].(*stateUpdate)
 	fnList := pl.Lookup("BlockUpdates", func(item interface{}) bool {
-    _, ok := item.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte))
+    _, ok := item.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte))
     return ok
   })
   for _, fni := range fnList {
-    if fn, ok := fni.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte)); ok {
-      fn(&block, logs, receipts, su.Destructs, su.Accounts, su.Storage)
+    if fn, ok := fni.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte)); ok {
+      fn(&block, logs, receipts, su.Destructs, su.Accounts, su.Storage, su.Code)
     }
   }
 }
