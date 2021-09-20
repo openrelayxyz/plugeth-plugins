@@ -7,6 +7,7 @@ import (
 	"context"
 	"time"
 	"encoding/json"
+	"math/big"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
@@ -213,7 +214,7 @@ func AppendAncient(number uint64, hash, headerBytes, body, receipts, td []byte) 
 // the BlockUpdates hook on downstream plugins.
 // TODO: We're not necessarily handling reorgs properly, which may result in
 // some blocks not being emitted through this hook.
-func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte) {
+func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int) {
 	if pl == nil {
 		log.Warn("Attempting to emit NewHead, but default PluginLoader has not been initialized")
 		return
@@ -243,12 +244,12 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte) {
 	receipts := result["receipts"].(types.Receipts)
 	su := result["stateUpdates"].(*stateUpdate)
 	fnList := pl.Lookup("BlockUpdates", func(item interface{}) bool {
-    _, ok := item.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte))
+    _, ok := item.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte))
     return ok
   })
   for _, fni := range fnList {
-    if fn, ok := fni.(func(*types.Block, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte)); ok {
-      fn(&block, logs, receipts, su.Destructs, su.Accounts, su.Storage, su.Code)
+    if fn, ok := fni.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte)); ok {
+      fn(&block, td, logs, receipts, su.Destructs, su.Accounts, su.Storage, su.Code)
     }
   }
 }
