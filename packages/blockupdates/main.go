@@ -155,16 +155,16 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 		log.Warn("Snapshots are required for StateUpdate plugins, but are currently disabled. State Updates will be unavailable")
 	}
 	v := ctx.GlobalString(httpApiFlagName)
-	if v != "" {
-		ctx.GlobalSet(httpApiFlagName, v+",plugeth")
-	} else if !strings.Contains(v, "plugeth") {
+	if v == "" {
 		ctx.GlobalSet(httpApiFlagName, "eth,net,web3,plugeth")
+	} else if !strings.Contains(v, "plugeth") {
+		ctx.GlobalSet(httpApiFlagName, v+",plugeth")
 	}
 	v = ctx.GlobalString(wsApiFlagName)
-	if v != "" {
-		ctx.GlobalSet(wsApiFlagName, v+",plugeth")
-	} else if !strings.Contains(v, "plugeth") {
+	if v == "" {
 		ctx.GlobalSet(wsApiFlagName, "eth,net,web3,plugeth")
+	} else if !strings.Contains(v, "plugeth") {
+		ctx.GlobalSet(wsApiFlagName, v+",plugeth")
 	}
 	log.Info("Loaded block updater plugin")
 }
@@ -226,6 +226,7 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int)
 	}
 	logs := make([]*types.Log, len(logsBytes))
 	for i, logBytes := range logsBytes {
+		// TODO: Look into filling in the logs with details from the block
 		l := types.Log{}
 		if err := rlp.DecodeBytes(logBytes, &l); err != nil {
 			log.Error("Failed to decode log", "hash", hash, "logindex", i, "err", err)
@@ -244,14 +245,15 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int)
 	receipts := result["receipts"].(types.Receipts)
 	su := result["stateUpdates"].(*stateUpdate)
 	fnList := pl.Lookup("BlockUpdates", func(item interface{}) bool {
-    _, ok := item.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte))
-    return ok
-  })
-  for _, fni := range fnList {
-    if fn, ok := fni.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte)); ok {
-      fn(&block, td, logs, receipts, su.Destructs, su.Accounts, su.Storage, su.Code)
-    }
-  }
+		_, ok := item.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte))
+		log.Info("Found BlockUpdates hook", "matches", ok)
+		return ok
+	})
+	for _, fni := range fnList {
+		if fn, ok := fni.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte)); ok {
+			fn(&block, td, logs, receipts, su.Destructs, su.Accounts, su.Storage, su.Code)
+		}
+	}
 }
 
 
