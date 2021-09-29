@@ -24,6 +24,7 @@ var (
 	backend restricted.Backend
 	lastBlock core.Hash
 	cache *lru.Cache
+	recentEmits *lru.Cache
 	snapshotFlagName = "snapshot"
 	log core.Logger
 	blockEvents core.Feed
@@ -150,7 +151,8 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 	log = logger
 	pl = loader
 	blockEvents = pl.GetFeed()
-	cache, _ = lru.New(128) // TODO: Make size configurable
+	cache, _ = lru.New(128)
+	recentEmits, _ = lru.New(128)
 	if !ctx.GlobalBool(snapshotFlagName) {
 		log.Warn("Snapshots are required for StateUpdate plugins, but are currently disabled. State Updates will be unavailable")
 	}
@@ -224,17 +226,13 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int)
 		log.Error("Failed to decode block", "hash", hash, "err", err)
 		return
 	}
-	logs := make([]*types.Log, len(logsBytes))
-	for i, logBytes := range logsBytes {
-		// TODO: Look into filling in the logs with details from the block
-		l := types.Log{}
-		if err := rlp.DecodeBytes(logBytes, &l); err != nil {
-			log.Error("Failed to decode log", "hash", hash, "logindex", i, "err", err)
-			return
-		}
-		logs[i] = &l
+	newHead(block, hash, td)
+}
+func newHead(block types.Block, hash core.Hash, td *big.Int) {
+	if recentEmits.Contains(hash) {
+		log.Debug("Skipping recently emitted block")
+		return
 	}
-
 	result, err := blockUpdates(context.Background(), &block)
 	if err != nil {
 		log.Error("Could not serialize block", "err", err, "hash", block.Hash())
@@ -245,14 +243,33 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int)
 	receipts := result["receipts"].(types.Receipts)
 	su := result["stateUpdates"].(*stateUpdate)
 	fnList := pl.Lookup("BlockUpdates", func(item interface{}) bool {
-		_, ok := item.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte))
+		_, ok := item.(func(*types.Block, *big.Int, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte))
 		log.Info("Found BlockUpdates hook", "matches", ok)
 		return ok
 	})
 	for _, fni := range fnList {
-		if fn, ok := fni.(func(*types.Block, *big.Int, []*types.Log, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte)); ok {
-			fn(&block, td, logs, receipts, su.Destructs, su.Accounts, su.Storage, su.Code)
+		if fn, ok := fni.(func(*types.Block, *big.Int, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte)); ok {
+			fn(&block, td, receipts, su.Destructs, su.Accounts, su.Storage, su.Code)
 		}
+	}
+	recentEmits.Add(hash, struct{}{})
+}
+
+func Reorg(common core.Hash, oldChain []core.Hash, newChain []core.Hash) {
+	for i := len(newChain) - 1; i >= 0; i-- {
+		blockHash := newChain[i]
+		blockRLP, err := backend.BlockByHash(context.Background(), blockHash)
+		if err != nil {
+			log.Error("Could not get block for reorg", "hash", blockHash, "err", err)
+			return
+		}
+		var block types.Block
+		if err := rlp.DecodeBytes(blockRLP, &block); err != nil {
+			log.Error("Could not decode block during reorg", "hash", blockHash, "err", err)
+			return
+		}
+		td := backend.GetTd(context.Background(), blockHash)
+		newHead(block, blockHash, td)
 	}
 }
 
