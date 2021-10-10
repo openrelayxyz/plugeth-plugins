@@ -1,0 +1,19 @@
+package main
+
+import (
+	"github.com/openrelayxyz/plugeth-utils/core"
+	"gopkg.in/urfave/cli.v1"
+)
+
+var log core.Logger
+
+func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+	log = logger
+	log.Info("loaded Get Rpc Calls plugin")
+}
+
+func GetRPCCalls(id, method, params string) {
+
+	log.Info("Received RPC Call", "id", id, "method", method, "params", params)
+
+}
