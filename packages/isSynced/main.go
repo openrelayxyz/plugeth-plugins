@@ -61,10 +61,9 @@ func (service *IsSyncedService) IsSynced(ctx context.Context) (interface{}, erro
 	totalDifficulty := service.backend.GetTd(ctx, hash)
 	y := len(x)
 	if y > 0 {
-		peers = true
 		for i := range x {
-			if totalDifficulty.Cmp(x[i].Protocols.Eth.Difficulty) < 0 {
-				peers = false
+			if totalDifficulty.Cmp(x[i].Protocols.Eth.Difficulty) <= 0 {
+				peers = true
 				break
 			}
 		}
