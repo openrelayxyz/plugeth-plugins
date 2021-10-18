@@ -27,8 +27,8 @@ jobs:
             export GOPATH=$HOME/go
             export GOARCH=amd64
             export PLUGETH_UTILS_VERSION=$(grep "github.com/openrelayxyz/plugeth-utils v" go.mod | cut -d ' ' -f 2)
-            for x in $($(which ls) -1 ./packages); do go build -buildmode=plugin -o artifacts/$x-$PLUGETH_UTILS_VERSION-${CIRCLE_TAG}.so ./packages/$x ; done
-            for x in $($(which ls) -1 ./packages); do CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOARCH=arm64 go build -buildmode=plugin -o artifacts/$x-$PLUGETH_UTILS_VERSION-${CIRCLE_TAG}.so ./packages/$x ; done
+            for x in $($(which ls) -1 ./packages); do go build -buildmode=plugin -o artifacts/$x-amd64-$PLUGETH_UTILS_VERSION-${CIRCLE_TAG}.so ./packages/$x ; done
+            for x in $($(which ls) -1 ./packages); do CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOARCH=arm64 go build -buildmode=plugin -o artifacts/$x-arm64-$PLUGETH_UTILS_VERSION-${CIRCLE_TAG}.so ./packages/$x ; done
       - run:
           name: "Publish Release on GitHub"
           command: |
@@ -50,6 +50,7 @@ workflows:
       - build_geth_push:
           # requires:
           #   - test
+          context: rivet
           filters:
             tags:
               only: /^v.*/
