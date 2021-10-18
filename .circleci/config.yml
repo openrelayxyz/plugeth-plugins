@@ -50,7 +50,7 @@ workflows:
       - build_geth_push:
           # requires:
           #   - test
-          context: rivet
+          context: Rivet
           filters:
             tags:
               only: /^v.*/
