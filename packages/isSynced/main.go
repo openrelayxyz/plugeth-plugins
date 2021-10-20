@@ -69,6 +69,9 @@ func (service *IsSyncedService) IsSynced(ctx context.Context) (interface{}, erro
 		}
 	}
 	progress := service.backend.Downloader().Progress()
+	if progress.HighestBlock() == 0 {
+		peers = false
+	}
 	return map[string]interface{}{
 		"startingBlock": fmt.Sprintf("%#x", (progress.StartingBlock())),
 		"currentBlock":  fmt.Sprintf("%#x", (progress.CurrentBlock())),
