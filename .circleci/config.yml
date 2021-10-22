@@ -1,0 +1,58 @@
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/go:1.17.2
+    steps:
+      - checkout
+  build_geth_push:
+    docker: # run the steps with Docker
+      - image: cimg/go:1.17.2 # ...with this image as the primary container
+      # this is where all `steps` will run
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Prep env
+          command: |
+            mkdir -p /home/circleci/go/src
+            mkdir artifacts
+            go mod tidy
+      - run:
+          name: build geth binaries
+          command: |
+            sudo apt update
+            sudo apt install gcc-aarch64-linux-gnu libc6-dev-arm64-cross wget -y
+            PLUGETH_UTILS_VERSION=$(grep "github.com/openrelayxyz/plugeth-utils v" go.mod | cut -d ' ' -f 2)
+            export GOPATH=$HOME/go
+            export GOARCH=amd64
+            export PLUGETH_UTILS_VERSION=$(grep "github.com/openrelayxyz/plugeth-utils v" go.mod | cut -d ' ' -f 2)
+            for x in $($(which ls) -1 ./packages); do go build -buildmode=plugin -o artifacts/$x-amd64-$PLUGETH_UTILS_VERSION-${CIRCLE_TAG}.so ./packages/$x ; done
+            for x in $($(which ls) -1 ./packages); do CC=aarch64-linux-gnu-gcc CGO_ENABLED=1 GOARCH=arm64 go build -buildmode=plugin -o artifacts/$x-arm64-$PLUGETH_UTILS_VERSION-${CIRCLE_TAG}.so ./packages/$x ; done
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            go get github.com/tcnksm/ghr
+            PLUGETH_UTILS_VERSION=$(grep "github.com/openrelayxyz/plugeth-utils v" go.mod | cut -d ' ' -f 2)
+            NAME=plugeth-plugins-$PLUGETH_UTILS_VERSION-${CIRCLE_TAG}
+            VERSION=${CIRCLE_TAG}
+            ghr  -draft -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -name $NAME -delete ${VERSION} ./artifacts/
+
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      # - test:
+      #     filters:  # required since `deploy` has tag filters AND requires `build`
+      #       tags:
+      #         only: /.*/
+      - build_geth_push:
+          # requires:
+          #   - test
+          context: Rivet
+          filters:
+            tags:
+              only: /^v.*/
+            branches:
+              ignore: /.*/
