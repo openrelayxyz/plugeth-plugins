@@ -256,6 +256,15 @@ func newHead(block types.Block, hash core.Hash, td *big.Int) {
 }
 
 func Reorg(common core.Hash, oldChain []core.Hash, newChain []core.Hash) {
+	fnList := pl.Lookup("BUPreReorg", func(item interface{}) bool {
+		_, ok := item.(func(core.Hash, []core.Hash, []core.Hash))
+		return ok
+	})
+	for _, fni := range fnList {
+		if fn, ok := fni.(func(core.Hash, []core.Hash, []core.Hash)); ok {
+			fn(common, oldChain, newChain)
+		}
+	}
 	for i := len(newChain) - 1; i >= 0; i-- {
 		blockHash := newChain[i]
 		blockRLP, err := backend.BlockByHash(context.Background(), blockHash)
