@@ -280,6 +280,15 @@ func Reorg(common core.Hash, oldChain []core.Hash, newChain []core.Hash) {
 		td := backend.GetTd(context.Background(), blockHash)
 		newHead(block, blockHash, td)
 	}
+	fnList = pl.Lookup("BUPostReorg", func(item interface{}) bool {
+		_, ok := item.(func(core.Hash, []core.Hash, []core.Hash))
+		return ok
+	})
+	for _, fni := range fnList {
+		if fn, ok := fni.(func(core.Hash, []core.Hash, []core.Hash)); ok {
+			fn(common, oldChain, newChain)
+		}
+	}
 }
 
 
