@@ -312,7 +312,7 @@ func blockUpdates(ctx context.Context, block *types.Block) (map[string]interface
 		return result, nil
 	}
 	data, err := backend.ChainDb().Get(append([]byte("su"), block.Root().Bytes()...))
-	if err != nil { return nil, fmt.Errorf("State Updates unavailable for block %#x", block.Hash())}
+	if err != nil { return nil, fmt.Errorf("State Updates unavailable for block %v", block.Hash())}
 	su := &stateUpdate{}
 	if err := rlp.DecodeBytes(data, su); err != nil { return nil, fmt.Errorf("State updates unavailable for block %#x", block.Hash()) }
 	result["stateUpdates"] = su
