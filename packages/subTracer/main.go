@@ -115,10 +115,26 @@ func (r *TracerResult) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64,
 }
 
 func (r *TracerResult) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+	r.CallStack = append(r.CallStack, CallStack{
+		GasUsed: gasUsed,
+		Output:  output,
+		Time:    t.String(),
+		Calls:   []CallStack{},
+	})
+	log.Info("inside of capture end")
 	if len(r.CallStack) > 0 {
 		events.Send(r.CallStack[0])
 	}
 }
+
+// type:    ctx.type,
+// 			from:    toHex(ctx.from),
+// 			to:      toHex(ctx.to),
+// 			value:   '0x' + ctx.value.toString(16),
+// 			gas:     '0x' + bigInt(ctx.gas).toString(16),
+// 			gasUsed: '0x' + bigInt(ctx.gasUsed).toString(16),
+// 			input:   toHex(ctx.input),{"method":"plugeth_subscribe", "params":["trace"],"id":7}
+// 			output:  toHex(ctx.output),
 
 func (r *TracerResult) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
 	r.CallStack = append(r.CallStack, CallStack{
@@ -142,8 +158,8 @@ func (r *TracerResult) CaptureExit(output []byte, gasUsed uint64, err error) {
 }
 
 func (r *TracerResult) Result() (interface{}, error) {
-	 return interface {}, error
- }
+	return "", nil
+}
 
 func GetAPIs(node core.Node, backend core.Backend) []core.API {
 	defer log.Info("APIs Initialized")
