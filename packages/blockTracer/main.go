@@ -110,7 +110,6 @@ func (r *TracerResult) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64,
 }
 
 func (r *TracerResult) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
-	log.Info("inside of capture end")
 	if len(r.CallStack) > 0 {
 		r.CallStack[0].Time = t.String()
 		events.Send(r.CallStack[0])
@@ -130,11 +129,9 @@ func (r *TracerResult) CaptureEnter(typ core.OpCode, from core.Address, to core.
 
 func (r *TracerResult) CaptureExit(output []byte, gasUsed uint64, err error) {
 	if len(r.CallStack) > 1 {
-		log.Info("inside of if", "CallStack", len(r.CallStack))
 		returnCall := r.CallStack[len(r.CallStack)-1]
 		returnCall.GasUsed = hexutil.Uint64(gasUsed)
 		returnCall.Output = output
-		log.Info("Indexed callstack", "Indexed", len(r.CallStack[len(r.CallStack)-2].Calls))
 		r.CallStack[len(r.CallStack)-2].Calls = append(r.CallStack[len(r.CallStack)-2].Calls, returnCall)
 		r.CallStack = r.CallStack[:len(r.CallStack)-1]
 	}
