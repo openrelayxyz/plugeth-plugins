@@ -256,6 +256,15 @@ func newHead(block types.Block, hash core.Hash, td *big.Int) {
 }
 
 func Reorg(common core.Hash, oldChain []core.Hash, newChain []core.Hash) {
+	fnList := pl.Lookup("BUPreReorg", func(item interface{}) bool {
+		_, ok := item.(func(core.Hash, []core.Hash, []core.Hash))
+		return ok
+	})
+	for _, fni := range fnList {
+		if fn, ok := fni.(func(core.Hash, []core.Hash, []core.Hash)); ok {
+			fn(common, oldChain, newChain)
+		}
+	}
 	for i := len(newChain) - 1; i >= 0; i-- {
 		blockHash := newChain[i]
 		blockRLP, err := backend.BlockByHash(context.Background(), blockHash)
@@ -270,6 +279,15 @@ func Reorg(common core.Hash, oldChain []core.Hash, newChain []core.Hash) {
 		}
 		td := backend.GetTd(context.Background(), blockHash)
 		newHead(block, blockHash, td)
+	}
+	fnList = pl.Lookup("BUPostReorg", func(item interface{}) bool {
+		_, ok := item.(func(core.Hash, []core.Hash, []core.Hash))
+		return ok
+	})
+	for _, fni := range fnList {
+		if fn, ok := fni.(func(core.Hash, []core.Hash, []core.Hash)); ok {
+			fn(common, oldChain, newChain)
+		}
 	}
 }
 
@@ -294,7 +312,7 @@ func blockUpdates(ctx context.Context, block *types.Block) (map[string]interface
 		return result, nil
 	}
 	data, err := backend.ChainDb().Get(append([]byte("su"), block.Root().Bytes()...))
-	if err != nil { return nil, fmt.Errorf("State Updates unavailable for block %#x", block.Hash())}
+	if err != nil { return nil, fmt.Errorf("State Updates unavailable for block %v", block.Hash())}
 	su := &stateUpdate{}
 	if err := rlp.DecodeBytes(data, su); err != nil { return nil, fmt.Errorf("State updates unavailable for block %#x", block.Hash()) }
 	result["stateUpdates"] = su
