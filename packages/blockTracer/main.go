@@ -8,6 +8,7 @@ import (
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
+	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	"gopkg.in/urfave/cli.v1"
 )
 
@@ -41,22 +42,17 @@ type TracerResult struct {
 }
 
 type CallStack struct {
-	Type      string       `json:"type"`
-	From      core.Address `json:"from"`
-	To        core.Address `json:"to"`
-	Value     *big.Int     `json:"value,omitempty"`
-	Gas       uint64       `json:"gas"`
-	GasUsed   uint64       `json:"gasUsed"`
-	Input     []byte       `json:"input"`
-	Output    []byte       `json:"output"`
-	Time      string       `json:"time,omitempty"`
-	Calls     []CallStack  `json:"calls,omitempty"` //may need a pointer
-	Error     string       `json:"error,omitempty"`
-	startTime time.Time
-	outOff    uint64
-	outLen    uint64
-	gasIn     uint64
-	gasCost   uint64
+	Type    string         `json:"type"`
+	From    core.Address   `json:"from"`
+	To      core.Address   `json:"to"`
+	Value   *big.Int       `json:"value,omitempty"`
+	Gas     hexutil.Uint64 `json:"gas"`
+	GasUsed hexutil.Uint64 `json:"gasUsed"`
+	Input   hexutil.Bytes  `json:"input"`
+	Output  hexutil.Bytes  `json:"output"`
+	Time    string         `json:"time,omitempty"`
+	Calls   []CallStack    `json:"calls,omitempty"`
+	Error   string         `json:"error,omitempty"`
 }
 
 func (t *TracerResult) TraceBlock(ctx context.Context) (<-chan CallStack, error) {
@@ -107,7 +103,6 @@ func (r *TracerResult) PostProcessBlock(block core.Hash) {
 func (r *TracerResult) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
 	r.CallStack = []CallStack{}
 }
-
 func (r *TracerResult) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
 }
 
@@ -115,34 +110,20 @@ func (r *TracerResult) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64,
 }
 
 func (r *TracerResult) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
-	r.CallStack = append(r.CallStack, CallStack{
-		GasUsed: gasUsed,
-		Output:  output,
-		Time:    t.String(),
-		Calls:   []CallStack{},
-	})
 	log.Info("inside of capture end")
 	if len(r.CallStack) > 0 {
+		r.CallStack[0].Time = t.String()
 		events.Send(r.CallStack[0])
 	}
 }
-
-// type:    ctx.type,
-// 			from:    toHex(ctx.from),
-// 			to:      toHex(ctx.to),
-// 			value:   '0x' + ctx.value.toString(16),
-// 			gas:     '0x' + bigInt(ctx.gas).toString(16),
-// 			gasUsed: '0x' + bigInt(ctx.gasUsed).toString(16),
-// 			input:   toHex(ctx.input),{"method":"plugeth_subscribe", "params":["trace"],"id":7}
-// 			output:  toHex(ctx.output),
 
 func (r *TracerResult) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
 	r.CallStack = append(r.CallStack, CallStack{
 		Type:  restricted.OpCode(typ).String(),
 		From:  from,
 		To:    to,
-		Input: input,
-		Gas:   gas,
+		Input: hexutil.Bytes(input),
+		Gas:   hexutil.Uint64(gas),
 		Calls: []CallStack{},
 	})
 }
@@ -151,6 +132,8 @@ func (r *TracerResult) CaptureExit(output []byte, gasUsed uint64, err error) {
 	if len(r.CallStack) > 1 {
 		log.Info("inside of if", "CallStack", len(r.CallStack))
 		returnCall := r.CallStack[len(r.CallStack)-1]
+		returnCall.GasUsed = hexutil.Uint64(gasUsed)
+		returnCall.Output = output
 		log.Info("Indexed callstack", "Indexed", len(r.CallStack[len(r.CallStack)-2].Calls))
 		r.CallStack[len(r.CallStack)-2].Calls = append(r.CallStack[len(r.CallStack)-2].Calls, returnCall)
 		r.CallStack = r.CallStack[:len(r.CallStack)-1]
