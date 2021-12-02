@@ -39,6 +39,7 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 
 type TracerResult struct {
 	CallStack []CallStack
+	Results   []CallStack
 }
 
 type CallStack struct {
@@ -52,6 +53,7 @@ type CallStack struct {
 	Output  hexutil.Bytes  `json:"output"`
 	Time    string         `json:"time,omitempty"`
 	Calls   []CallStack    `json:"calls,omitempty"`
+	Results []CallStack    `json:"results,omitempty"`
 	Error   string         `json:"error,omitempty"`
 }
 
@@ -86,6 +88,7 @@ func GetLiveTracer(core.Hash, core.StateDB) core.BlockTracer {
 }
 
 func (r *TracerResult) PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
+	r.Results = []CallStack{}
 }
 
 func (r *TracerResult) PreProcessTransaction(tx core.Hash, block core.Hash, i int) {
@@ -98,6 +101,10 @@ func (r *TracerResult) PostProcessTransaction(tx core.Hash, block core.Hash, i i
 }
 
 func (r *TracerResult) PostProcessBlock(block core.Hash) {
+	if len(r.Results) > 0 {
+		events.Send(r.Results[0])
+	}
+
 }
 
 func (r *TracerResult) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
@@ -111,8 +118,7 @@ func (r *TracerResult) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64,
 
 func (r *TracerResult) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
 	if len(r.CallStack) > 0 {
-		r.CallStack[0].Time = t.String()
-		events.Send(r.CallStack[0])
+		r.Results = append(r.CallStack)
 	}
 }
 
