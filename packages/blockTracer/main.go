@@ -57,9 +57,9 @@ type CallStack struct {
 	Error   string         `json:"error,omitempty"`
 }
 
-func (t *TracerResult) TraceBlock(ctx context.Context) (<-chan CallStack, error) {
-	subch := make(chan CallStack, 1000)
-	rtrnch := make(chan CallStack, 1000)
+func (t *TracerResult) TraceBlock(ctx context.Context) (<-chan []CallStack, error) {
+	subch := make(chan []CallStack, 1000)
+	rtrnch := make(chan []CallStack, 1000)
 	go func() {
 		log.Info("Subscription Block Tracer setup")
 		sub := events.Subscribe(subch)
@@ -102,7 +102,7 @@ func (r *TracerResult) PostProcessTransaction(tx core.Hash, block core.Hash, i i
 
 func (r *TracerResult) PostProcessBlock(block core.Hash) {
 	if len(r.Results) > 0 {
-		events.Send(r.Results[0])
+		events.Send(r.Results)
 	}
 
 }
