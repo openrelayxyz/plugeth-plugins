@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
@@ -97,7 +96,6 @@ func FilterPrecompileCalls(calls []GethResponse) []GethResponse {
 func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	result := []*ParityResult{}
 	calls := FilterPrecompileCalls(gr.Calls)
-	//result = append(result, item)
 	if gr.Value == "" {
 		gr.Value = "0x0"
 	}
@@ -120,7 +118,6 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 }
 
 func (ap *APIs) ReplayTransaction(ctx context.Context, txHash core.Hash, types []string) (interface{}, error) {
-	defer fmt.Println("its a parsing error")
 	client, err := ap.stack.Attach()
 	if err != nil {
 		return nil, err
