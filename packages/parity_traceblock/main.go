@@ -4,10 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/openrelayxyz/plugeth-utils/core"
-	"github.com/openrelayxyz/plugeth-utils/restricted"
+	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
+	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
+	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 
 	"gopkg.in/urfave/cli.v1"
 )
@@ -129,7 +129,7 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	return result
 }
 
-func (ap *APIs) ReplayBlockTransactions(ctx context.Context, bkNumber restricted.BlockNumber, tracer []string) (interface{}, error) {
+func (ap *APIs) ReplayBlockTransactions(ctx context.Context, bkNumber string, tracer []string) (interface{}, error) {
 	client, err := ap.stack.Attach()
 	if err != nil {
 		return nil, err
@@ -139,9 +139,13 @@ func (ap *APIs) ReplayBlockTransactions(ctx context.Context, bkNumber restricted
 	if err != nil {
 		return nil, err
 	}
+	blockNM, err := hexutil.DecodeUint64(bkNumber)
+	if err != nil {
+		return nil, err
+	}
 	block := &types.Block{}
-	blockNB := int64(bkNumber)
-	rlpBlock, err := ap.backend.BlockByNumber(ctx, blockNB)
+	bkNB := int64(blockNM)
+	rlpBlock, err := ap.backend.BlockByNumber(ctx, bkNB)
 	if err != nil {
 		return nil, err
 	}
