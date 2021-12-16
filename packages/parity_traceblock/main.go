@@ -111,6 +111,8 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	if gr.Output == "" {
 		gr.Output = "0x0"
 	}
+	addr := make([]int, len(address))
+	copy(addr[:], address)
 	result = append(result, &ParityResult{
 		Action: Action{CallType: strings.ToLower(gr.Type),
 			From:  gr.From,
@@ -121,7 +123,7 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 		Result: InnerResult{GasUsed: gr.GasUsed,
 			Output: gr.Output},
 		SubTraces:     len(calls),
-		TracerAddress: address,
+		TracerAddress: addr,
 		Type:          t})
 	for i, call := range calls {
 		result = append(result, GethParity(call, append(address, i), t)...)
