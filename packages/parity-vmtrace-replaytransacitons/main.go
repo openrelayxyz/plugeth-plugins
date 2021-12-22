@@ -5,7 +5,9 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/holiman/uint256"
 	"github.com/openrelayxyz/plugeth-utils/core"
+	"github.com/openrelayxyz/plugeth-utils/restricted"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -14,7 +16,7 @@ type OuterResult struct {
 	Output    hexutil.Bytes `json:"output"`
 	StateDiff *string       `json:"stateDiff"`
 	Trace     []string      `json:"trace"`
-	VMTrace   VMTrace       `json:"vmTrace"`
+	VMTrace   *VMTrace      `json:"vmTrace"`
 }
 
 type VMTrace struct {
@@ -24,10 +26,28 @@ type VMTrace struct {
 }
 
 type Ops struct {
+	Op   string
 	Cost uint64   `json:"cost"`
-	Ex   string   `json:"ex"`
+	Ex   Ex       `json:"ex"`
 	PC   uint64   `json:"pc"`
 	Sub  *VMTrace `json:"sub"`
+}
+
+type Ex struct {
+	Mem   *Mem           `json:"mem"`
+	Push  []*uint256.Int `json:"push"`
+	Store *Store         `json:"store"`
+	Used  uint64         `json:"used"`
+}
+
+type Mem struct {
+	Data core.Hash `json:"data"`
+	Off  uint64    `json:"off"`
+}
+
+type Store struct {
+	Key   *uint256.Int `json:"key"`
+	Value *uint256.Int `json:"val"`
 }
 
 type ParityVMTrace struct {
@@ -71,30 +91,61 @@ func (vm *ParityVMTrace) ReplayTransaction(ctx context.Context, txHash core.Hash
 	if err != nil {
 		return nil, err
 	}
-	response := make(map[string]string)
-	client.Call(&response, "eth_getTransactionByHash", txHash)
-	var code hexutil.Bytes
-	err = client.Call(&code, "eth_getCode", response["to"], response["blockNumber"])
-	if err != nil {
-		return nil, err
-	}
 	tr := TracerService{}
 	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethVMTracer"})
-	return tr, nil
+	trace := make([]string, 0)
+	result := OuterResult{
+		Output:    tr.Output,
+		StateDiff: nil,
+		Trace:     trace,
+		VMTrace:   tr.CurrentTrace,
+	}
+	return result, nil
 }
 
 //Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode
 
+func CopyOf(x *uint256.Int) *uint256.Int {
+	return x.Clone()
+}
+
 type TracerService struct {
-	StateDB core.StateDB
+	StateDB      core.StateDB
 	CurrentTrace *VMTrace
+	Output       hexutil.Bytes
+	Mem          Mem
+	Store        Store
 }
 
 func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
 	r.CurrentTrace = &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}}
 }
 func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
-	ops := Ops{Cost: cost,
+	var mem *Mem
+	var str *Store
+	switch restricted.OpCode(op).String() {
+	case "MSTORE":
+		mem = &Mem{
+			Data: core.Hash(scope.Stack().Back(1).Bytes32()),
+			Off:  scope.Stack().Back(0).Uint64(),
+		}
+	case "MSTORE8":
+		mem = &Mem{
+			Data: core.Hash(scope.Stack().Back(1).Bytes32()),
+			Off:  scope.Stack().Back(0).Uint64(),
+		}
+	case "SSTORE":
+		str = &Store{
+			Key:   scope.Stack().Back(0).Clone(),
+			Value: scope.Stack().Back(1).Clone(),
+		}
+	}
+	ops := Ops{
+		Op:   restricted.OpCode(op).String(),
+		Cost: cost,
+		Ex: Ex{Mem: mem,
+			Store: str,
+			Used:  gas - cost},
 		PC: pc}
 	r.CurrentTrace.Ops = append(r.CurrentTrace.Ops, ops)
 }
@@ -109,6 +160,7 @@ func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core
 }
 func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	r.CurrentTrace = r.CurrentTrace.parent
+	r.Output = output
 }
 func (r *TracerService) Result() (interface{}, error) {
 	return r, nil
