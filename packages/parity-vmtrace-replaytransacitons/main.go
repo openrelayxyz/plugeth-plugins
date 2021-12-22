@@ -78,100 +78,38 @@ func (vm *ParityVMTrace) ReplayTransaction(ctx context.Context, txHash core.Hash
 	if err != nil {
 		return nil, err
 	}
-	tr := TracerResult{}
+	tr := TracerService{}
 	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethVMTracer"})
-	//var result []interface{}
-	//result = append(result, tr.Count, tr.CountTwo, tr.CountThree, tr.CountFour, tr.CountFive)
-	//result = append(result, tr.PCs)
-	ops := make([]Ops, tr.Count)
-	for i := range ops {
-		ops[i].Cost = tr.Costs[i]
-		ops[i].PC = tr.PCs[i]
-	}
-	trace := make([]string, 0)
-	result := &OuterResult{
-		Output:    tr.Output,
-		StateDiff: nil,
-		Trace:     trace,
-		VMTrace: VMTrace{
-			Code: code,
-			Ops:  ops,
-		},
-	}
-
-	return result, nil
+	return tr, nil
 }
 
 //Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode
 
 type TracerService struct {
-	StateDB      core.StateDB
-	Output       hexutil.Bytes
-	Cost         uint64
-	PC           uint64
-	Costs        []uint64
-	PCs          []uint64
-	Greeting     string
-	Depth        []int
-	OpCodes      []core.OpCode
-	Ops          []core.OpCode
-	ErrorOps     []core.OpCode
-	GasUsed      []uint64
-	Count        int
-	CountTwo     int
-	CountThree   int
-	CountFour    int
-	CountFive    int
+	StateDB core.StateDB
 	CurrentTrace *VMTrace
 }
 
 func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
-	r.Greeting = "Goodbuy Horses"
-	r.OpCodes = []core.OpCode{}
-	r.Ops = []core.OpCode{}
-	r.Depth = []int{}
-	r.ErrorOps = []core.OpCode{}
-	r.GasUsed = []uint64{}
-	r.Costs = []uint64{}
 	r.CurrentTrace = &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}}
 }
 func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
-	if depth == 1 {
-		r.OpCodes = append(r.OpCodes, op)
-		r.Costs = append(r.Costs, cost)
-		r.PCs = append(r.PCs, pc)
-	}
-	r.Depth = append(r.Depth, depth)
-	// if depth > 1 {
-	// 	r.SecodaryResult.Id =
-	// }
-
-	//append to r.CurrentTrace.Ops
-
+	ops := Ops{Cost: cost,
+		PC: pc}
+	r.CurrentTrace.Ops = append(r.CurrentTrace.Ops, ops)
 }
 func (r *TracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
-	r.ErrorOps = append(r.ErrorOps, op)
 }
 func (r *TracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
-	r.GasUsed = append(r.GasUsed, gasUsed)
-	r.Output = output
 }
 func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
-	//r.Ops = append(r.Ops, typ)
 	trace := &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}, parent: r.CurrentTrace}
 	r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Sub = trace
 	r.CurrentTrace = trace
-
 }
 func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	r.CurrentTrace = r.CurrentTrace.parent
 }
 func (r *TracerService) Result() (interface{}, error) {
-
-	r.Count = len(r.OpCodes)
-	r.CountTwo = len(r.Ops)
-	r.CountThree = len(r.Depth)
-	r.CountFour = len(r.ErrorOps)
-	r.CountFive = len(r.GasUsed)
 	return r, nil
 }
