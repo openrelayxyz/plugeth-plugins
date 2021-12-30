@@ -26,11 +26,12 @@ type VMTrace struct {
 }
 
 type Ops struct {
-	Op   string
-	Cost uint64   `json:"cost"`
-	Ex   Ex       `json:"ex"`
-	PC   uint64   `json:"pc"`
-	Sub  *VMTrace `json:"sub"`
+	Op        string
+	pushcount int
+	Cost      uint64   `json:"cost"`
+	Ex        Ex       `json:"ex"`
+	PC        uint64   `json:"pc"`
+	Sub       *VMTrace `json:"sub"`
 }
 
 type Ex struct {
@@ -121,9 +122,20 @@ func (r *TracerService) CaptureStart(from core.Address, to core.Address, create 
 	r.CurrentTrace = &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}}
 }
 func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
+	count := 0
 	var mem *Mem
 	var str *Store
+	if size := len(r.CurrentTrace.Ops); size > 0 {
+		r.CurrentTrace.Ops[size-1].Ex.Push = make([]*uint256.Int, r.CurrentTrace.Ops[size-1].pushcount)
+		for i := 0; i < r.CurrentTrace.Ops[size-1].pushcount; i++ {
+			r.CurrentTrace.Ops[size-1].Ex.Push[i] = scope.Stack().Back(i).Clone()
+		}
+	}
 	switch restricted.OpCode(op).String() {
+	case "PUSH1":
+		count = 1
+	case "PUSH2":
+		count = 1
 	case "MSTORE":
 		mem = &Mem{
 			Data: core.Hash(scope.Stack().Back(1).Bytes32()),
@@ -141,8 +153,9 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		}
 	}
 	ops := Ops{
-		Op:   restricted.OpCode(op).String(),
-		Cost: cost,
+		pushcount: count,
+		Op:        restricted.OpCode(op).String(),
+		Cost:      cost,
 		Ex: Ex{Mem: mem,
 			Store: str,
 			Used:  gas - cost},
