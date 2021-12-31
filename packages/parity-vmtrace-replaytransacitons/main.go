@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/holiman/uint256"
@@ -26,12 +27,13 @@ type VMTrace struct {
 }
 
 type Ops struct {
-	Op        string
-	pushcount int
-	Cost      uint64   `json:"cost"`
-	Ex        Ex       `json:"ex"`
-	PC        uint64   `json:"pc"`
-	Sub       *VMTrace `json:"sub"`
+	Op          string
+	pushcount   int
+	orientation int
+	Cost        uint64   `json:"cost"`
+	Ex          Ex       `json:"ex"`
+	PC          uint64   `json:"pc"`
+	Sub         *VMTrace `json:"sub"`
 }
 
 type Ex struct {
@@ -42,8 +44,8 @@ type Ex struct {
 }
 
 type Mem struct {
-	Data core.Hash `json:"data"`
-	Off  uint64    `json:"off"`
+	Data interface{} `json:"data"`
+	Off  uint64      `json:"off"`
 }
 
 type Store struct {
@@ -106,10 +108,6 @@ func (vm *ParityVMTrace) ReplayTransaction(ctx context.Context, txHash core.Hash
 
 //Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode
 
-func CopyOf(x *uint256.Int) *uint256.Int {
-	return x.Clone()
-}
-
 type TracerService struct {
 	StateDB      core.StateDB
 	CurrentTrace *VMTrace
@@ -123,29 +121,60 @@ func (r *TracerService) CaptureStart(from core.Address, to core.Address, create 
 }
 func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
 	count := 0
+	direction := 0
 	var mem *Mem
 	var str *Store
 	if size := len(r.CurrentTrace.Ops); size > 0 {
-		r.CurrentTrace.Ops[size-1].Ex.Push = make([]*uint256.Int, r.CurrentTrace.Ops[size-1].pushcount)
-		for i := 0; i < r.CurrentTrace.Ops[size-1].pushcount; i++ {
-			r.CurrentTrace.Ops[size-1].Ex.Push[i] = scope.Stack().Back(i).Clone()
+		switch r.CurrentTrace.Ops[size-1].orientation {
+		case 0:
+			r.CurrentTrace.Ops[size-1].Ex.Push = make([]*uint256.Int, r.CurrentTrace.Ops[size-1].pushcount)
+			for i := 0; i < r.CurrentTrace.Ops[size-1].pushcount; i++ {
+				r.CurrentTrace.Ops[size-1].Ex.Push[i] = scope.Stack().Back(i).Clone()
+			}
+		case 1:
+			r.CurrentTrace.Ops[size-1].Ex.Push = make([]*uint256.Int, r.CurrentTrace.Ops[size-1].pushcount)
+			for i := 0; i < r.CurrentTrace.Ops[size-1].pushcount; i++ {
+				r.CurrentTrace.Ops[size-1].Ex.Push[(len(r.CurrentTrace.Ops[size-1].Ex.Push)-1)-i] = scope.Stack().Back(i).Clone()
+			}
 		}
 	}
-	switch restricted.OpCode(op).String() {
-	case "PUSH1":
+	pushCode := restricted.OpCode(op).String()
+	switch pushCode {
+	case "PUSH1", "PUSH2", "PUSH3", "PUSH4", "PUSH5", "PUSH6", "PUSH7", "PUSH8", "PUSH9", "PUSH10", "PUSH11", "PUSH12", "PUSH13", "PUSH14", "PUSH15", "PUSH16", "PUSH17", "PUSH18", "PUSH19", "PUSH20", "PUSH21", "PUSH22", "PUSH23", "PUSH24", "PUSH25", "PUSH26", "PUSH27", "PUSH28", "PUSH29", "PUSH30", "PUSH31", "PUSH32":
 		count = 1
-	case "PUSH2":
+	case "DUP1", "DUP2", "DUP3", "DUP4", "DUP5", "DUP6", "DUP7", "DUP8", "DUP9", "DUP10", "DUP11", "DUP12", "DUP13", "DUP14", "DUP15", "DUP16":
+		x, _ := strconv.Atoi(pushCode[3:len(pushCode)])
+		count = x + 1
+		direction = 1
+	case "SWAP1", "SWAP2", "SWAP3", "SWAP4", "SWAP5", "SWAP6", "SWAP7", "SWAP8", "SWAP9", "SWAP10", "SWAP11", "SWAP12", "SWAP13", "SWAP14", "SWAP15", "SWAP16":
+		x, _ := strconv.Atoi(pushCode[4:len(pushCode)])
+		count = x + 1
+		direction = 1
+	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT":
 		count = 1
-	case "MSTORE":
+	}
+
+	memCode := restricted.OpCode(op).String()
+	switch memCode {
+	case "MSTORE", "MSTORE*", "STATICCALL", "RETURNDATACOPY", "CODECOPY":
 		mem = &Mem{
 			Data: core.Hash(scope.Stack().Back(1).Bytes32()),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
-	case "MSTORE8":
+	case "MLOAD":
 		mem = &Mem{
-			Data: core.Hash(scope.Stack().Back(1).Bytes32()),
+			Data: core.Hash(scope.Stack().Back(0).Bytes32()),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
+	case "CALLDATACOPY":
+		mem = &Mem{
+			Data: scope.Stack().Back(0).Clone(),
+			Off:  scope.Stack().Back(0).Uint64(),
+		}
+	}
+
+	storeCode := restricted.OpCode(op).String()
+	switch storeCode {
 	case "SSTORE":
 		str = &Store{
 			Key:   scope.Stack().Back(0).Clone(),
@@ -153,9 +182,10 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		}
 	}
 	ops := Ops{
-		pushcount: count,
-		Op:        restricted.OpCode(op).String(),
-		Cost:      cost,
+		orientation: direction,
+		pushcount:   count,
+		Op:          restricted.OpCode(op).String(),
+		Cost:        cost,
 		Ex: Ex{Mem: mem,
 			Store: str,
 			Used:  gas - cost},
