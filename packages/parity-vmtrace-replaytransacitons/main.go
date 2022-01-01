@@ -142,6 +142,8 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 	switch pushCode {
 	case "PUSH1", "PUSH2", "PUSH3", "PUSH4", "PUSH5", "PUSH6", "PUSH7", "PUSH8", "PUSH9", "PUSH10", "PUSH11", "PUSH12", "PUSH13", "PUSH14", "PUSH15", "PUSH16", "PUSH17", "PUSH18", "PUSH19", "PUSH20", "PUSH21", "PUSH22", "PUSH23", "PUSH24", "PUSH25", "PUSH26", "PUSH27", "PUSH28", "PUSH29", "PUSH30", "PUSH31", "PUSH32":
 		count = 1
+	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE":
+		count = 1
 	case "DUP1", "DUP2", "DUP3", "DUP4", "DUP5", "DUP6", "DUP7", "DUP8", "DUP9", "DUP10", "DUP11", "DUP12", "DUP13", "DUP14", "DUP15", "DUP16":
 		x, _ := strconv.Atoi(pushCode[3:len(pushCode)])
 		count = x + 1
@@ -150,29 +152,25 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		x, _ := strconv.Atoi(pushCode[4:len(pushCode)])
 		count = x + 1
 		direction = 1
-	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT":
-		count = 1
 	}
-
 	memCode := restricted.OpCode(op).String()
 	switch memCode {
-	case "MSTORE", "MSTORE*", "STATICCALL", "RETURNDATACOPY", "CODECOPY":
+	case "MSTORE", "MSTORE8", "STATICCALL", "RETURNDATACOPY", "CODECOPY":
 		mem = &Mem{
-			Data: core.Hash(scope.Stack().Back(1).Bytes32()),
+			Data: scope.Stack().Back(1).Clone(),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
 	case "MLOAD":
 		mem = &Mem{
-			Data: core.Hash(scope.Stack().Back(0).Bytes32()),
+			Data: scope.Stack().Back(1).Clone(),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
 	case "CALLDATACOPY":
 		mem = &Mem{
-			Data: scope.Stack().Back(0).Clone(),
+			Data: scope.Stack().Back(0),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
 	}
-
 	storeCode := restricted.OpCode(op).String()
 	switch storeCode {
 	case "SSTORE":
