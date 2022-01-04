@@ -136,13 +136,17 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 			for i := 0; i < r.CurrentTrace.Ops[size-1].pushcount; i++ {
 				r.CurrentTrace.Ops[size-1].Ex.Push[(len(r.CurrentTrace.Ops[size-1].Ex.Push)-1)-i] = scope.Stack().Back(i).Clone()
 			}
+		case 2:
+			r.CurrentTrace.Ops[size-1].Ex.Push = make([]*uint256.Int, 0)
 		}
 	}
 	pushCode := restricted.OpCode(op).String()
 	switch pushCode {
+	case "REVERT", "RETURN":
+		direction = 2
 	case "PUSH1", "PUSH2", "PUSH3", "PUSH4", "PUSH5", "PUSH6", "PUSH7", "PUSH8", "PUSH9", "PUSH10", "PUSH11", "PUSH12", "PUSH13", "PUSH14", "PUSH15", "PUSH16", "PUSH17", "PUSH18", "PUSH19", "PUSH20", "PUSH21", "PUSH22", "PUSH23", "PUSH24", "PUSH25", "PUSH26", "PUSH27", "PUSH28", "PUSH29", "PUSH30", "PUSH31", "PUSH32":
 		count = 1
-	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE":
+	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE", "TIMESTAMP", "SELFBALANCE":
 		count = 1
 	case "DUP1", "DUP2", "DUP3", "DUP4", "DUP5", "DUP6", "DUP7", "DUP8", "DUP9", "DUP10", "DUP11", "DUP12", "DUP13", "DUP14", "DUP15", "DUP16":
 		x, _ := strconv.Atoi(pushCode[3:len(pushCode)])
@@ -155,19 +159,37 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 	}
 	memCode := restricted.OpCode(op).String()
 	switch memCode {
-	case "MSTORE", "MSTORE8", "STATICCALL", "RETURNDATACOPY", "CODECOPY":
+	case "STATICCALL", "CODECOPY", "CALL":
 		mem = &Mem{
 			Data: scope.Stack().Back(1).Clone(),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
-	case "MLOAD":
+	case "MSTORE", "MSTORE8":
 		mem = &Mem{
-			Data: scope.Stack().Back(1).Clone(),
+			Data: core.BytesToHash(scope.Stack().Back(1).Bytes()),
+			Off:  scope.Stack().Back(0).Uint64(),
+		}
+	case "MLOAD", "RETURNDATACOPY":
+		mem = &Mem{
+			Data: core.BytesToHash(scope.Memory().GetCopy(int64(scope.Stack().Back(0).Uint64()), 32)),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
 	case "CALLDATACOPY":
+		// var (
+		// 	memOffset  = scope.Stack.Back(0)
+		// 	dataOffset = scope.Stack.Back(1)
+		// 	length     = scope.Stack.Back(2)
+		// )
+		// dataOffset64, overflow := dataOffset.Uint64WithOverflow()
+		// if overflow {
+		// 	dataOffset64 = 0xffffffffffffffff
+		// }
+		// // These values are checked for overflow during gas cost calculation
+		// memOffset64 := memOffset.Uint64()
+		// length64 := length.Uint64()
+		// scope.Memory.Set(memOffset64, length64, getData(scope.Contract.Input, dataOffset64, length64))
 		mem = &Mem{
-			Data: scope.Stack().Back(0),
+			Data: core.BytesToHash(scope.Memory().GetCopy(int64(scope.Stack().Back(0).Uint64()), 32)),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
 	}
@@ -201,6 +223,13 @@ func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core
 }
 func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	r.CurrentTrace = r.CurrentTrace.parent
+	lastOpUsed := r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-2].Ex.Used
+	switch r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Op {
+	case "DELEGATECALL":
+		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 2600)
+	case "CALL", "STATICCALL":
+		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 100)
+	}
 	r.Output = output
 }
 func (r *TracerService) Result() (interface{}, error) {
