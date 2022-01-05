@@ -142,7 +142,7 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 	switch pushCode {
 	case "PUSH1", "PUSH2", "PUSH3", "PUSH4", "PUSH5", "PUSH6", "PUSH7", "PUSH8", "PUSH9", "PUSH10", "PUSH11", "PUSH12", "PUSH13", "PUSH14", "PUSH15", "PUSH16", "PUSH17", "PUSH18", "PUSH19", "PUSH20", "PUSH21", "PUSH22", "PUSH23", "PUSH24", "PUSH25", "PUSH26", "PUSH27", "PUSH28", "PUSH29", "PUSH30", "PUSH31", "PUSH32":
 		count = 1
-	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE", "TIMESTAMP", "SELFBALANCE":
+	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE", "TIMESTAMP", "SELFBALANCE", "SGT", "SDIV":
 		count = 1
 	case "DUP1", "DUP2", "DUP3", "DUP4", "DUP5", "DUP6", "DUP7", "DUP8", "DUP9", "DUP10", "DUP11", "DUP12", "DUP13", "DUP14", "DUP15", "DUP16":
 		x, _ := strconv.Atoi(pushCode[3:len(pushCode)])
@@ -205,10 +205,6 @@ func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core
 	r.CurrentTrace = trace
 }
 func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
-	// currentOp := r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Op
-	// if currentOp == "REVERT" || currentOp == "RETURN" {
-	// 	r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Push = make([]*uint256.Int, 0)
-	// }
 	r.CurrentTrace = r.CurrentTrace.parent
 	lastOpUsed := r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-2].Ex.Used
 	switch r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Op {
