@@ -10,14 +10,18 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
+
+	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
+	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 	"gopkg.in/urfave/cli.v1"
 )
 
 type OuterResult struct {
-	Output    hexutil.Bytes `json:"output"`
-	StateDiff *string       `json:"stateDiff"`
-	Trace     []string      `json:"trace"`
-	VMTrace   *VMTrace      `json:"vmTrace"`
+	Output          hexutil.Bytes `json:"output"`
+	StateDiff       *string       `json:"stateDiff"`
+	Trace           []string      `json:"trace"`
+	TransactionHash core.Hash     `json:"transactionHash"`
+	VMTrace         *VMTrace      `json:"vmTrace"`
 }
 
 type VMTrace struct {
@@ -94,6 +98,9 @@ func (vm *ParityVMTrace) ReplayBlockTransactions(ctx context.Context, bkNumber s
 	if err != nil {
 		return nil, err
 	}
+	// tr := []struct {
+	// 	Result TracerService `json:"result"`
+	// }{}
 	tr := []struct {
 		Result TracerService `json:"result"`
 	}{}
@@ -101,11 +108,34 @@ func (vm *ParityVMTrace) ReplayBlockTransactions(ctx context.Context, bkNumber s
 	if err != nil {
 		return nil, err
 	}
-	// var data [][]byte
-	// for i := range tr {
-	// 	data = append(data, tr[i].Results.Output)
-	// }
-	return tr, nil
+	blockNM, err := hexutil.DecodeUint64(bkNumber)
+	if err != nil {
+		return nil, err
+	}
+	block := &types.Block{}
+	bkNB := int64(blockNM)
+	rlpBlock, err := vm.backend.BlockByNumber(ctx, bkNB)
+	if err != nil {
+		return nil, err
+	}
+	if err := rlp.DecodeBytes(rlpBlock, block); err != nil {
+		return nil, err
+	}
+
+	transactions := block.Transactions()
+	result := make([]OuterResult, len(tr))
+	emptyTrace := make([]string, 0)
+	for i := range result {
+		result[i] = OuterResult{
+			Output:          tr[i].Result.Output,
+			StateDiff:       nil,
+			Trace:           emptyTrace,
+			TransactionHash: transactions[i].Hash(),
+			VMTrace:         tr[i].Result.CurrentTrace,
+		}
+	}
+
+	return result, nil
 }
 
 //Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode
@@ -117,31 +147,6 @@ type TracerService struct {
 	Mem          Mem
 	Store        Store
 }
-
-// type Result struct {
-// 	Results InnerResult
-// }
-//
-// type InnerResult struct {
-// 	Output []byte
-// }
-
-// func (r *Result) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
-// }
-// func (r *Result) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
-// }
-// func (r *Result) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
-// }
-// func (r *Result) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
-// }
-// func (r *Result) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
-// }
-// func (r *Result) CaptureExit(output []byte, gasUsed uint64, err error) {
-// 	r.Results = InnerResult{Output: output}
-// }
-// func (r *Result) Result() (interface{}, error) {
-// 	return r, nil
-// }
 
 func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
 	r.CurrentTrace = &VMTrace{Code: r.stateDB.GetCode(to), Ops: []Ops{}}
@@ -163,15 +168,13 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 			for i := 0; i < r.CurrentTrace.Ops[size-1].pushcount; i++ {
 				r.CurrentTrace.Ops[size-1].Ex.Push[(len(r.CurrentTrace.Ops[size-1].Ex.Push)-1)-i] = scope.Stack().Back(i).Clone()
 			}
-		case 2:
-			r.CurrentTrace.Ops[size-1].Ex.Push = make([]*uint256.Int, 0)
 		}
 	}
 	pushCode := restricted.OpCode(op).String()
 	switch pushCode {
 	case "PUSH1", "PUSH2", "PUSH3", "PUSH4", "PUSH5", "PUSH6", "PUSH7", "PUSH8", "PUSH9", "PUSH10", "PUSH11", "PUSH12", "PUSH13", "PUSH14", "PUSH15", "PUSH16", "PUSH17", "PUSH18", "PUSH19", "PUSH20", "PUSH21", "PUSH22", "PUSH23", "PUSH24", "PUSH25", "PUSH26", "PUSH27", "PUSH28", "PUSH29", "PUSH30", "PUSH31", "PUSH32":
 		count = 1
-	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE", "TIMESTAMP", "SELFBALANCE":
+	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE", "TIMESTAMP", "SELFBALANCE", "SGT", "SDIV":
 		count = 1
 	case "DUP1", "DUP2", "DUP3", "DUP4", "DUP5", "DUP6", "DUP7", "DUP8", "DUP9", "DUP10", "DUP11", "DUP12", "DUP13", "DUP14", "DUP15", "DUP16":
 		x, _ := strconv.Atoi(pushCode[3:len(pushCode)])
@@ -184,10 +187,9 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 	}
 	memCode := restricted.OpCode(op).String()
 	switch memCode {
-	case "STATICCALL", "CODECOPY", "CALL":
+	case "STATICCALL", "CALL":
 		mem = &Mem{
-			Data: scope.Stack().Back(1).Clone(),
-			Off:  scope.Stack().Back(0).Uint64(),
+			Off: scope.Stack().Back(4).Uint64(),
 		}
 	case "MSTORE", "MSTORE8":
 		mem = &Mem{
@@ -200,21 +202,8 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
 	case "CALLDATACOPY":
-		// var (
-		// 	memOffset  = scope.Stack.Back(0)
-		// 	dataOffset = scope.Stack.Back(1)
-		// 	length     = scope.Stack.Back(2)
-		// )
-		// dataOffset64, overflow := dataOffset.Uint64WithOverflow()
-		// if overflow {
-		// 	dataOffset64 = 0xffffffffffffffff
-		// }
-		// // These values are checked for overflow during gas cost calculation
-		// memOffset64 := memOffset.Uint64()
-		// length64 := length.Uint64()
-		// scope.Memory.Set(memOffset64, length64, getData(scope.Contract.Input, dataOffset64, length64))
 		mem = &Mem{
-			Data: core.BytesToHash(scope.Memory().GetCopy(int64(scope.Stack().Back(0).Uint64()), 32)),
+			Data: scope.Memory().GetCopy(int64(scope.Stack().Back(0).Uint64()), 32),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
 	}
@@ -232,6 +221,7 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		Op:          restricted.OpCode(op).String(),
 		Cost:        cost,
 		Ex: Ex{Mem: mem,
+			Push:  make([]*uint256.Int, 0),
 			Store: str,
 			Used:  gas - cost},
 		PC: pc}
@@ -254,6 +244,10 @@ func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 2600)
 	case "CALL", "STATICCALL":
 		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 100)
+		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Mem.Data = hexutil.Bytes(output)
+		if err != nil {
+			r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Mem = nil
+		}
 	}
 	r.Output = output
 }
