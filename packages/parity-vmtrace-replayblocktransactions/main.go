@@ -13,11 +13,6 @@ import (
 	"gopkg.in/urfave/cli.v1"
 )
 
-// type APIs struct {
-// 	backend core.Backend
-// 	stack   core.Node
-// }
-
 type OuterResult struct {
 	Output    hexutil.Bytes `json:"output"`
 	StateDiff *string       `json:"stateDiff"`
@@ -72,49 +67,6 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 	}
 }
 
-// func GetAPIs(stack core.Node, backend core.Backend) []core.API {
-// 	defer log.Info("APIs Initialized")
-// 	return []core.API{
-// 		{
-// 			Namespace: "trace",
-// 			Version:   "1.0",
-// 			Service: &APIs{backend: backend,
-// 				stack: stack,
-// 			},
-// 			Public: true,
-// 		},
-// 	}
-// }
-
-// type OuterGethResponse struct {
-// 	Result GethResponse `json:"result"`
-// }
-//
-// type GethResponse struct {
-// 	Type    string         `json:"type,omitempty"`
-// 	From    string         `json:"from,omitempty"`
-// 	To      string         `json:"to,omitempty"`
-// 	Value   hexutil.Uint64 `json:"value,omitempty"`
-// 	Gas     string         `json:"gas,omitempty"`
-// 	GasUsed string         `json:"gasUsed,omitempty"`
-// 	Input   string         `json:"input,omitempty"`
-// 	Output  string         `json:"output,omitempty"`
-// 	Calls   []GethResponse `json:"calls,omitempty"`
-// }
-
-// func (ap *APIs) ReplayBlockTransactions(ctx context.Context, bkNumber string, tracer []string) (interface{}, error) {
-// 	client, err := ap.stack.Attach()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	gr := []OuterGethResponse{}
-// 	err = client.Call(&gr, "debug_traceBlockByNumber", bkNumber, map[string]string{"tracer": "callTracer"})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	return gr, nil
-// }
-
 type ParityVMTrace struct {
 	backend core.Backend
 	stack   core.Node
@@ -122,7 +74,7 @@ type ParityVMTrace struct {
 
 var Tracers = map[string]func(core.StateDB) core.TracerResult{
 	"plugethVMTracer": func(sdb core.StateDB) core.TracerResult {
-		return &TracerService{StateDB: sdb}
+		return &TracerService{stateDB: sdb}
 	},
 }
 
@@ -142,56 +94,57 @@ func (vm *ParityVMTrace) ReplayBlockTransactions(ctx context.Context, bkNumber s
 	if err != nil {
 		return nil, err
 	}
-	tr := []TracerService{}
+	tr := []struct {
+		Result TracerService `json:"result"`
+	}{}
 	err = client.Call(&tr, "debug_traceBlockByNumber", bkNumber, map[string]string{"tracer": "plugethVMTracer"})
 	if err != nil {
 		return nil, err
 	}
-	var response []OuterResult
-	for i, _ := range tr {
-		trace := make([]string, 0)
-		result := OuterResult{
-			Output:    tr[i].Output,
-			StateDiff: nil,
-			Trace:     trace,
-			VMTrace:   tr[i].CurrentTrace,
-		}
-		response = append(response, result)
-	}
-	return response, nil
+	// var data [][]byte
+	// for i := range tr {
+	// 	data = append(data, tr[i].Results.Output)
+	// }
+	return tr, nil
 }
-
-type GethResult struct{}
 
 //Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode
 
 type TracerService struct {
-	StateDB      core.StateDB
+	stateDB      core.StateDB
 	CurrentTrace *VMTrace
 	Output       hexutil.Bytes
 	Mem          Mem
 	Store        Store
 }
 
-// func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
+// type Result struct {
+// 	Results InnerResult
 // }
-// func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
+//
+// type InnerResult struct {
+// 	Output []byte
 // }
-// func (r *TracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
+
+// func (r *Result) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
 // }
-// func (r *TracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+// func (r *Result) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
 // }
-// func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
+// func (r *Result) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
 // }
-// func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
+// func (r *Result) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
 // }
-// func (r *TracerService) Result() (interface{}, error) {
-// 	r.message = "goodbuy horses"
+// func (r *Result) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
+// }
+// func (r *Result) CaptureExit(output []byte, gasUsed uint64, err error) {
+// 	r.Results = InnerResult{Output: output}
+// }
+// func (r *Result) Result() (interface{}, error) {
 // 	return r, nil
 // }
 
 func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
-	r.CurrentTrace = &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}}
+	r.CurrentTrace = &VMTrace{Code: r.stateDB.GetCode(to), Ops: []Ops{}}
 }
 func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
 	count := 0
@@ -216,8 +169,6 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 	}
 	pushCode := restricted.OpCode(op).String()
 	switch pushCode {
-	case "REVERT", "RETURN":
-		direction = 2
 	case "PUSH1", "PUSH2", "PUSH3", "PUSH4", "PUSH5", "PUSH6", "PUSH7", "PUSH8", "PUSH9", "PUSH10", "PUSH11", "PUSH12", "PUSH13", "PUSH14", "PUSH15", "PUSH16", "PUSH17", "PUSH18", "PUSH19", "PUSH20", "PUSH21", "PUSH22", "PUSH23", "PUSH24", "PUSH25", "PUSH26", "PUSH27", "PUSH28", "PUSH29", "PUSH30", "PUSH31", "PUSH32":
 		count = 1
 	case "SIGNEXTEND", "ISZERO", "CALLDATASIZE", "STATICCALL", "CALLVALUE", "MLOAD", "EQ", "ADDRESS", "DELEGATECALL", "CALLDATALOAD", "ADD", "LT", "SHR", "GT", "SLOAD", "SHL", "AND", "SUB", "EXTCODESIZE", "GAS", "SLT", "CALLER", "SHA3", "CALL", "RETURNDATASIZE", "NOT", "MUL", "OR", "DIV", "EXP", "BYTE", "TIMESTAMP", "SELFBALANCE":
@@ -291,7 +242,7 @@ func (r *TracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64
 func (r *TracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
 }
 func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
-	trace := &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}, parent: r.CurrentTrace}
+	trace := &VMTrace{Code: r.stateDB.GetCode(to), Ops: []Ops{}, parent: r.CurrentTrace}
 	r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Sub = trace
 	r.CurrentTrace = trace
 }
