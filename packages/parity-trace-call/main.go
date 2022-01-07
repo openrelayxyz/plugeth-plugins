@@ -125,13 +125,6 @@ func (ap *APIs) Call(ctx context.Context, txObject map[string]string, types []st
 	if err != nil {
 		return nil, err
 	}
-	// gethObject := make(map[string]interface{})
-	// gethObject["from"] = txObject["from"]
-	// gethObject["to"] = txObject["to"]
-	// gethObject["gas"] = txObject["gas"]
-	// gethObject["data"] = txObject["data"]
-	// gethObject["gasPrice"] = txObject["gasPrice"]
-	// gethObject["value"] = txObject["value"]
 	gr := GethResponse{}
 	client.Call(&gr, "debug_traceCall", txObject, "latest", map[string]string{"tracer": "callTracer"})
 	tAddress := make([]int, 0)
