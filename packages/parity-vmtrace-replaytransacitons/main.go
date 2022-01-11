@@ -30,6 +30,7 @@ type Ops struct {
 	Op          string
 	pushcount   int
 	orientation int
+	warmAccess  bool
 	Cost        uint64   `json:"cost"`
 	Ex          Ex       `json:"ex"`
 	PC          uint64   `json:"pc"`
@@ -56,6 +57,11 @@ type Store struct {
 type ParityVMTrace struct {
 	backend core.Backend
 	stack   core.Node
+}
+
+type OpLogs struct {
+	Address    []core.Address
+	WarmAccess bool
 }
 
 var log core.Logger
@@ -114,12 +120,14 @@ type TracerService struct {
 	Output       hexutil.Bytes
 	Mem          Mem
 	Store        Store
+	warmAccess   bool
 }
 
 func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
 	r.CurrentTrace = &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}}
 }
-func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
+func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, Data []byte, depth int, err error) {
+	warm := false
 	count := 0
 	direction := 0
 	var mem *Mem
@@ -183,7 +191,15 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 			Value: scope.Stack().Back(1).Clone(),
 		}
 	}
+	accessCode := restricted.OpCode(op).String()
+	switch accessCode {
+	case "DELEGATECALL":
+		warm = r.StateDB.AddressInAccessList(core.Address(scope.Stack().Back(3).Bytes20()))
+		//r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].warmAccess = true
+		//warm = true
+	}
 	ops := Ops{
+		warmAccess:  warm,
 		orientation: direction,
 		pushcount:   count,
 		Op:          restricted.OpCode(op).String(),
@@ -209,7 +225,13 @@ func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	lastOpUsed := r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-2].Ex.Used
 	switch r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Op {
 	case "DELEGATECALL":
-		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 2600)
+		if r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].warmAccess != true {
+			//r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 100)
+			r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = 777777777
+		} else {
+			//r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 2600)
+			r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = 666666666
+		}
 	case "CALL", "STATICCALL":
 		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 100)
 		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Mem.Data = hexutil.Bytes(output)
