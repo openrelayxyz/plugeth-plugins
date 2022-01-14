@@ -109,6 +109,20 @@ func (vm *ParityVMTrace) ReplayTransaction(ctx context.Context, txHash core.Hash
 
 //Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode
 
+func getData(data []byte, start uint64, size uint64) []byte {
+	length := uint64(len(data))
+	if start > length {
+		start = length
+	}
+	end := start + size
+	if end > length {
+		end = length
+	}
+	d := make([]byte, size)
+	copy(d, data[start:end])
+	return d
+}
+
 type TracerService struct {
 	StateDB      core.StateDB
 	CurrentTrace *VMTrace
@@ -179,35 +193,33 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		}
 	case "CODECOPY":
 		var (
-			memOffset = scope.Stack().Back(0)
-			//codeOffset = scope.Stack().Back(1)
-			length = scope.Stack().Back(2)
+			memOffset  = scope.Stack().Back(0)
+			codeOffset = scope.Stack().Back(1)
+			length     = scope.Stack().Back(2)
 		)
-		// uint64CodeOffset, overflow := codeOffset.Uint64WithOverflow()
-		// if overflow {
-		// 	uint64CodeOffset = 0xffffffffffffffff
-		// }
+		uint64CodeOffset, overflow := codeOffset.Uint64WithOverflow()
+		if overflow {
+			uint64CodeOffset = 0xffffffffffffffff
+		}
+		code := scope.Contract().Code()
 		mem = &Mem{
-			Data: scope.Memory().GetCopy(int64(memOffset.Uint64()), int64(length.Uint64())),
-			//Data: hexutil.Bytes(r.StateDB.GetCode(scope.Contract().Address())),
-			// Data: scope.Memory().Len(),
-			Off: memOffset.Uint64(),
+			Data: hexutil.Bytes(getData(code, uint64CodeOffset, length.Uint64())),
+			Off:  memOffset.Uint64(),
 		}
 	case "CALLDATACOPY":
 		var (
-			memOffset = scope.Stack().Back(0)
-			//codeOffset = scope.Stack().Back(1)
-			length = scope.Stack().Back(2)
+			memOffset  = scope.Stack().Back(0)
+			codeOffset = scope.Stack().Back(1)
+			length     = scope.Stack().Back(2)
 		)
-		// uint64CodeOffset, overflow := codeOffset.Uint64WithOverflow()
-		// if overflow {
-		// 	uint64CodeOffset = 0xffffffffffffffff
-		// }
+		uint64DataOffset, overflow := codeOffset.Uint64WithOverflow()
+		if overflow {
+			uint64DataOffset = 0xffffffffffffffff
+		}
+		data := scope.Contract().Input()
 		mem = &Mem{
-			Data: hexutil.Bytes(scope.Memory().GetCopy(int64(memOffset.Uint64()), int64(length.Uint64()))),
-			// Data: hexutil.Bytes(r.StateDB.GetCode(scope.Contract().Address())),
-			// Data: scope.Memory().Len(),
-			Off: memOffset.Uint64(),
+			Data: hexutil.Bytes(getData(data, uint64DataOffset, length.Uint64())),
+			Off:  memOffset.Uint64(),
 		}
 	}
 	storeCode := restricted.OpCode(op).String()
@@ -247,8 +259,6 @@ func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	r.CurrentTrace = r.CurrentTrace.parent
 	lastOpUsed := r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-2].Ex.Used
 	switch r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Op {
-	// case "CALLDATACOPY":
-	// 	r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used
 	case "DELEGATECALL":
 		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 2600)
 	case "CALL", "STATICCALL":
