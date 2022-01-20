@@ -17,25 +17,42 @@ type OuterResult struct {
 }
 
 type InnerResult struct {
-	GasUsed string `json:"gasUsed"`
-	Output  string `json:"output"`
+	Address string `json:"address,omitempty"`
+	Code    string `json:"code,omitempty"`
+	GasUsed string `json:"gasUsed,omitempty"`
+	Output  string `json:"output,omitempty"`
 }
 
 type Action struct {
-	CallType string         `json:"callType"`
-	From     string         `json:"from"`
-	Gas      string         `json:"gas"`
-	Input    string         `json:"input"`
-	To       string         `json:"to"`
+	CallType string         `json:"callType,omitempty"`
+	From     string         `json:"from,omitempty"`
+	Gas      string         `json:"gas,omitempty"`
+	Init     string         `json:"init,omitempty"`
+	Input    string         `json:"input,omitempty"`
+	To       string         `json:"to,omitempty"`
 	Value    hexutil.Uint64 `json:"value"`
 }
 
+// type CreateAction struct {
+// 	From  string         `json:"from"`
+// 	Gas   string         `json:"gas"`
+// 	Init  string         `json:"init"`
+// 	Value hexutil.Uint64 `json:"value"`
+// }
+//
+// type CreateInnerResult struct {
+// 	Address string `json:"address"`
+// 	Code    string `json:"code"`
+// 	GasUsed string `json:"gasUsed"`
+// }
+
 type ParityResult struct {
-	Action        Action      `json:"action"`
-	Result        InnerResult `json:"result"`
-	SubTraces     int         `json:"subtraces"`
-	TracerAddress []int       `json:"traceAddress"`
-	Type          string      `json:"type"`
+	Action        *Action      `json:"action"`
+	Error         string       `json:"error,omitempty"`
+	Result        *InnerResult `json:"result,omitempty"`
+	SubTraces     int          `json:"subtraces"`
+	TracerAddress []int        `json:"traceAddress"`
+	Type          string       `json:"type"`
 }
 
 type APIs struct {
@@ -80,6 +97,7 @@ type GethResponse struct {
 	GasUsed string         `json:"gasUsed,omitempty"`
 	Input   string         `json:"input,omitempty"`
 	Output  string         `json:"output,omitempty"`
+	Error   string         `json:"error,omitempty"`
 	Calls   []GethResponse `json:"calls,omitempty"`
 }
 
@@ -97,24 +115,54 @@ func FilterPrecompileCalls(calls []GethResponse) []GethResponse {
 func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	result := []*ParityResult{}
 	calls := FilterPrecompileCalls(gr.Calls)
-	// if gr.Value == "" {
-	// 	gr.Value = "0x0"
-	// }
 	addr := make([]int, len(address))
 	copy(addr[:], address)
-	result = append(result, &ParityResult{
-		Action: Action{CallType: strings.ToLower(gr.Type),
-			From:  gr.From,
-			Gas:   gr.Gas,
-			Input: gr.Input,
-			To:    gr.To,
-			Value: gr.Value},
-		Result: InnerResult{GasUsed: gr.GasUsed,
-			Output: gr.Output},
-		SubTraces:     len(calls),
-		TracerAddress: addr,
-		Type:          t})
+	if gr.Error == "execution reverted" {
+		result = append(result, &ParityResult{
+			Action: &Action{CallType: strings.ToLower(gr.Type),
+				From:  gr.From,
+				Gas:   gr.Gas,
+				Input: gr.Input,
+				To:    gr.To,
+				Value: gr.Value},
+			Error:         "Reverted",
+			SubTraces:     len(calls),
+			TracerAddress: addr,
+			Type:          t})
+	}
+	if gr.Type == "CREATE" {
+		result = append(result, &ParityResult{
+			Action: &Action{
+				From:  gr.From,
+				Gas:   gr.Gas,
+				Init:  gr.Input,
+				Value: gr.Value},
+			Result: &InnerResult{
+				Address: gr.To,
+				Code:    gr.Output,
+				GasUsed: gr.GasUsed,
+			},
+			SubTraces:     len(calls),
+			TracerAddress: addr,
+			Type:          t})
+	} else {
+		result = append(result, &ParityResult{
+			Action: &Action{CallType: strings.ToLower(gr.Type),
+				From:  gr.From,
+				Gas:   gr.Gas,
+				Input: gr.Input,
+				To:    gr.To,
+				Value: gr.Value},
+			Result: &InnerResult{GasUsed: gr.GasUsed,
+				Output: gr.Output},
+			SubTraces:     len(calls),
+			TracerAddress: addr,
+			Type:          t})
+	}
 	for i, call := range calls {
+		if call.Type == "DELEGATECALL" {
+			call.Value = gr.Value
+		}
 		result = append(result, GethParity(call, append(address, i), t)...)
 	}
 	return result
