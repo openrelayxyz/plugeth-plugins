@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"strconv"
 	"time"
@@ -21,13 +22,13 @@ type OuterResult struct {
 }
 
 type VMTrace struct {
-	Code   hexutil.Bytes `json:"code"`
-	Ops    []Ops         `json:"ops"`
-	parent *VMTrace
+	Code            hexutil.Bytes `json:"code"`
+	Ops             []Ops         `json:"ops"`
+	parent          *VMTrace
+	lastReturnValue []byte
 }
 
 type Ops struct {
-	Op          string
 	pushcount   int
 	orientation int
 	warmAccess  bool
@@ -35,6 +36,7 @@ type Ops struct {
 	Ex          Ex       `json:"ex"`
 	PC          uint64   `json:"pc"`
 	Sub         *VMTrace `json:"sub"`
+	Op          string   `json:"Op,omitempty"`
 }
 
 type Ex struct {
@@ -159,7 +161,7 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 	switch pushCode {
 	case "PUSH1", "PUSH2", "PUSH3", "PUSH4", "PUSH5", "PUSH6", "PUSH7", "PUSH8", "PUSH9", "PUSH10", "PUSH11", "PUSH12", "PUSH13", "PUSH14", "PUSH15", "PUSH16", "PUSH17", "PUSH18", "PUSH19", "PUSH20", "PUSH21", "PUSH22", "PUSH23", "PUSH24", "PUSH25", "PUSH26", "PUSH27", "PUSH28", "PUSH29", "PUSH30", "PUSH31", "PUSH32":
 		count = 1
-	case "ADD", "ADDRESS", "AND", "BYTE", "CALL", "CALLDATALOAD", "CALLDATASIZE", "CALLER", "CALLVALUE", "DELEGATECALL", "DIV", "EQ", "EXP", "EXTCODESIZE", "GAS", "GT", "ISZERO", "LT", "MLOAD", "MOD", "MUL", "NOT", "NUMBER", "OR", "RETURNDATASIZE", "SDIV", "SELFBALANCE", "SGT", "SHA3", "SHL", "SHR", "SIGNEXTEND", "SLOAD", "SLT", "STATICCALL", "SUB", "TIMESTAMP":
+	case "ADD", "ADDMOD", "ADDRESS", "AND", "BYTE", "CALL", "CALLDATALOAD", "CALLDATASIZE", "CALLER", "CALLVALUE", "CHAINID", "CREATE", "CREATE2", "DELEGATECALL", "DIV", "EQ", "EXP", "EXTCODEHASH", "EXTCODESIZE", "GAS", "GASPRICE", "GT", "ISZERO", "LT", "MLOAD", "MOD", "MSIZE", "MUL", "MULMOD", "NOT", "NUMBER", "OR", "RETURNDATASIZE", "SDIV", "SELFBALANCE", "SGT", "SHA3", "SHL", "SHR", "SIGNEXTEND", "SLOAD", "SLT", "STATICCALL", "SUB", "TIMESTAMP":
 		count = 1
 	case "DUP1", "DUP2", "DUP3", "DUP4", "DUP5", "DUP6", "DUP7", "DUP8", "DUP9", "DUP10", "DUP11", "DUP12", "DUP13", "DUP14", "DUP15", "DUP16":
 		x, _ := strconv.Atoi(pushCode[3:len(pushCode)])
@@ -172,7 +174,11 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 	}
 	memCode := restricted.OpCode(op).String()
 	switch memCode {
-	case "STATICCALL", "CALL":
+	case "CALL":
+		mem = &Mem{
+			Off: scope.Stack().Back(5).Uint64(),
+		}
+	case "STATICCALL":
 		mem = &Mem{
 			Off: scope.Stack().Back(4).Uint64(),
 		}
@@ -183,13 +189,32 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		}
 	case "MSTORE8":
 		mem = &Mem{
-			Data: core.BytesToHash(scope.Stack().Back(1).Bytes()),
+			Data: fmt.Sprintf("%#x", scope.Stack().Back(1).Uint64()),
 			Off:  scope.Stack().Back(0).Uint64(),
 		}
-	case "MLOAD", "RETURNDATACOPY":
+	case "MLOAD":
 		mem = &Mem{
 			Data: core.BytesToHash(scope.Memory().GetCopy(int64(scope.Stack().Back(0).Uint64()), 32)),
 			Off:  scope.Stack().Back(0).Uint64(),
+		}
+
+	case "RETURNDATACOPY":
+		var (
+			memOffset  = scope.Stack().Back(0)
+			codeOffset = scope.Stack().Back(1)
+			length     = scope.Stack().Back(2)
+		)
+		uint64CodeOffset, overflow := codeOffset.Uint64WithOverflow()
+		if overflow {
+			uint64CodeOffset = 0xffffffffffffffff
+		}
+		if len(hexutil.Bytes(getData(r.CurrentTrace.lastReturnValue, uint64CodeOffset, length.Uint64()))) == 0 {
+			mem = nil
+		} else {
+			mem = &Mem{
+				Data: hexutil.Bytes(getData(r.CurrentTrace.lastReturnValue, uint64CodeOffset, length.Uint64())),
+				Off:  memOffset.Uint64(),
+			}
 		}
 	case "CODECOPY":
 		var (
@@ -217,6 +242,9 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 			uint64DataOffset = 0xffffffffffffffff
 		}
 		data := scope.Contract().Input()
+		if len(hexutil.Bytes(getData(data, uint64DataOffset, length.Uint64()))) == 0 {
+			mem = nil
+		}
 		mem = &Mem{
 			Data: hexutil.Bytes(getData(data, uint64DataOffset, length.Uint64())),
 			Off:  memOffset.Uint64(),
@@ -246,6 +274,7 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 func (r *TracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
 }
 func (r *TracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+	r.Output = output
 }
 func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
 	// if restricted.OpCode(type).String() == "CALLDATACOPY" {
@@ -257,18 +286,20 @@ func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core
 }
 func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	r.CurrentTrace = r.CurrentTrace.parent
+	r.CurrentTrace.lastReturnValue = output
 	lastOpUsed := r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-2].Ex.Used
 	switch r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Op {
 	case "DELEGATECALL":
-		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 2600)
+		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 100)
 	case "CALL", "STATICCALL":
 		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Used = lastOpUsed - (gasUsed + 100)
 		r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Mem.Data = hexutil.Bytes(output)
-		if err != nil {
+		if err != nil || len(output) == 0 {
+			// if err != nil || len(output) == 0 || core.BytesToHash(output) == core.HexToHash("0x1") {
 			r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Ex.Mem = nil
 		}
 	}
-	r.Output = output
+	// r.Output = output
 }
 func (r *TracerService) Result() (interface{}, error) {
 	return r, nil
