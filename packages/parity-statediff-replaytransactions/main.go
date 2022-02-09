@@ -20,31 +20,32 @@ type OuterResult struct {
 	VMTrace   *string       `json:"vmTrace"`
 }
 
-type Code struct {
-	Code interface{} `json:"Code"`
-}
-
-// type Nonce struct {
-// 	Nonce interface{} `json:"nonce"`
-// }
-
 type LayerTwo struct {
 	Balance *Star            `json:"balance"`
+	Code    *Star            `json:"code"`
 	Nonce   *Star            `json:"nonce"`
 	Storage map[string]*Star `json:"storage"`
 }
 
 type Star struct {
 	Interior Interior
+	New      bool
+}
+type Interior struct {
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 func (s *Star) MarshalJSON() ([]byte, error) {
 	if s == nil {
 		return []byte(`"="`), nil
 	}
-	if s.Interior.From == s.Interior.To {
-		return []byte(`"="`), nil
+	if s.New {
+		return []byte(fmt.Sprintf(`{"+":"%v"}`, s.Interior.To)), nil
 	}
+	// if s.Interior.From == s.Interior.To {
+	// 	return []byte(`"="`), nil
+	// }
 	interior, err := json.Marshal(s.Interior)
 	if err != nil {
 		return nil, err
@@ -56,6 +57,7 @@ func (s *Star) UnmarshalJSON(input []byte) error {
 	if string(input) == `"="` {
 		return nil
 	}
+	// TODO: we need to distinguish between the return values if the key is star and the return values if the key is plus
 	x := struct {
 		Interior Interior `json:"*"`
 	}{}
@@ -64,11 +66,6 @@ func (s *Star) UnmarshalJSON(input []byte) error {
 	}
 	s.Interior = x.Interior
 	return nil
-}
-
-type Interior struct {
-	From string `json:"from"`
-	To   string `json:"to"`
 }
 
 type ParityStateDiffTrace struct {
@@ -115,25 +112,14 @@ func (sd *ParityStateDiffTrace) ReplayTransaction(ctx context.Context, txHash co
 	tr := TracerService{}
 	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethStateDiffTracer"})
 
-	// trace := make([]string, 0)
-	// result := OuterResult{
-	// 	Output:    tr.Output,
-	// 	StateDiff: tr.ReturnObj,
-	// 	Trace:     trace,
-	// 	VMTrace:   nil,
-	// }
+	trace := make([]string, 0)
+	result := OuterResult{
+		Output:    tr.Output,
+		StateDiff: tr.ReturnObj,
+		Trace:     trace,
+		VMTrace:   nil,
+	}
 
-	result := tr.NonceCount
-	// result := make(map[string]interface{})
-	// result[tr.Miner.String()] = Balance{Balance: Star{Interior{From: tr.MinerStartBalance, To: tr.MinerReturnBalance}}}
-	// result[tr.To.String()] = Balance{Balance: Star{Interior{From: tr.ToStartBalance, To: tr.ToReturnBalance}}}
-	// result[tr.From.String()] = Balance{Balance: Star{Interior{From: tr.FromStartBalance, To: tr.FromReturnBalance}}}
-
-	// type lists struct {
-	// 	To   []core.Address
-	// 	From []core.Address
-	// }
-	// result := lists{To: tr.EnterTo, From: tr.EnterFrom}
 	return result, err
 }
 
@@ -141,49 +127,32 @@ type TracerService struct {
 	stateDB      core.StateDB
 	blockContext core.BlockContext
 	Output       hexutil.Bytes
-	ParityMiner  core.Address
 	Miner        core.Address
 	To           core.Address
 	From         core.Address
-	ReturnObj    map[string]LayerTwo
-	Inner        map[string]interface{}
-	NonceList    []string
-	NonceCount   map[string]uint64
-	Count        uint64
-	PMBalance    *big.Int
+	ReturnObj    map[string]*LayerTwo
 }
 
 func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
-	r.NonceCount = make(map[string]uint64)
-	// count := uint64(0)
-	r.NonceList = []string{}
-	r.ReturnObj = make(map[string]LayerTwo)
-	r.Inner = make(map[string]interface{})
-	r.Count = 0
-	r.ParityMiner = core.HexToAddress("0x0000000000000000000000000000000000000000")
-	r.PMBalance = r.stateDB.GetBalance(r.ParityMiner)
-	// r.NonceCount[r.To.String()] = r.Count
-	r.NonceCount[r.From.String()] = r.Count
+	r.ReturnObj = make(map[string]*LayerTwo)
+	r.Miner = r.blockContext.Coinbase
 	r.To = to
 	r.From = from
-	r.Miner = r.blockContext.Coinbase
-	// r.NonceList = append(r.NonceList, hexutil.EncodeUint64(r.stateDB.GetNonce(r.To)), hexutil.EncodeUint64(r.stateDB.GetNonce(r.From)))
-	if _, ok := r.ReturnObj[r.To.String()]; !ok {
-		r.ReturnObj[r.To.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(to))}}}
+	if _, ok := r.ReturnObj[to.String()]; !ok {
+		r.ReturnObj[to.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(new(big.Int).Add(r.stateDB.GetBalance(to), value))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(to))}, false}}
+		// r.ReturnObj[r.To.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(new(big.Int).Sub(r.stateDB.GetBalance(to), value))}}}
 	}
 
 	if _, ok := r.ReturnObj[r.From.String()]; !ok {
-		r.ReturnObj[r.From.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(from))}}, Nonce: &Star{Interior{To: hexutil.EncodeUint64(r.stateDB.GetNonce(r.From))}}}
+		r.ReturnObj[r.From.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(from))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(from) - 1), To: hexutil.EncodeUint64(r.stateDB.GetNonce(from))}, false}}
 	}
 
 	if _, ok := r.ReturnObj[r.Miner.String()]; !ok {
-		r.ReturnObj[r.Miner.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))}}}
+		r.ReturnObj[r.Miner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.Miner))}, false}}
+		// r.ReturnObj[r.Miner.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))}}}
 	}
-
 }
 func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, rData []byte, depth int, err error) {
-	// r.NonceList = append(r.NonceList, hexutil.EncodeUint64(r.stateDB.GetNonce(r.To)), hexutil.EncodeUint64(r.stateDB.GetNonce(r.From)))
-	// r.Ops = append(r.Ops, restricted.OpCode(op).String())
 	opCode := restricted.OpCode(op).String()
 	switch opCode {
 	case "SSTORE":
@@ -191,16 +160,13 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		storageFrom := r.stateDB.GetState(scope.Contract().Address(), core.BytesToHash(popVal)).String()
 		storageTo := core.BytesToHash(scope.Stack().Back(1).Bytes()).String()
 		storageHash := core.BytesToHash(popVal).String()
-		//storageAddr := core.HexToAddress(hexutil.EncodeUint64(scope.Stack().Back(0).Uint64()))
 		addr := scope.Contract().Address().String()
 		if storageTo != storageFrom {
-
-			//r.Inner[storageHash] = Star{Interior{From: storageFrom, To: storageTo}
 			if storage, ok := r.ReturnObj[addr].Storage[storageHash]; ok {
 				storage.Interior.To = storageTo
 			} else {
 
-				r.ReturnObj[addr].Storage[storageHash] = &Star{Interior{From: storageFrom, To: storageTo}}
+				r.ReturnObj[addr].Storage[storageHash] = &Star{Interior{From: storageFrom, To: storageTo}, false}
 			}
 		}
 	}
@@ -209,44 +175,39 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 func (r *TracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
 }
 func (r *TracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
-	// if _, ok := r.ReturnObj[r.To.String()]; !ok {
-	// 	r.ReturnObj[r.To.String()] = LayerTwo{Nonce: &Star{Interior{To: hexutil.EncodeUint64(r.stateDB.GetNonce(r.To))}}}
-	// }
-	// r.NonceList = append(r.NonceList, hexutil.EncodeUint64(r.stateDB.GetNonce(r.To)), hexutil.EncodeUint64(r.stateDB.GetNonce(r.From)))
 	r.Output = output
 }
 func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
-	// r.NonceList = append(r.NonceList, hexutil.EncodeUint64(r.stateDB.GetNonce(r.To)), hexutil.EncodeUint64(r.stateDB.GetNonce(r.From)))
-	if _, ok := r.ReturnObj[to.String()]; !ok {
-		r.ReturnObj[to.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(to))}}, Nonce: &Star{Interior{To: hexutil.EncodeUint64(r.stateDB.GetNonce(to))}}}
+	localValue := value
+	if localValue == nil {
+		localValue = new(big.Int)
 	}
-	// r.NonceCount[to.String()] = r.Count + r.stateDB.GetNonce(to)
-	r.Count = r.stateDB.GetNonce(from)
+	if _, ok := r.ReturnObj[to.String()]; !ok {
+		// fmt.Println(r.stateDB.GetBalance(to), value)
+		r.ReturnObj[to.String()] = &LayerTwo{
+			Storage: make(map[string]*Star),
+			Balance: &Star{Interior{
+				From: hexutil.EncodeBig(new(big.Int).Sub(r.stateDB.GetBalance(to), localValue))}, false},
+			Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(to))}, false}}
+		// r.ReturnObj[to.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(to))}}}
+	}
 }
 func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
-	// r.NonceList = append(r.NonceList, hexutil.EncodeUint64(r.stateDB.GetNonce(r.To)), hexutil.EncodeUint64(r.stateDB.GetNonce(r.From)))
-	// r.NonceCount[r.To.String()] = r.Count + r.stateDB.GetNonce(r.To)
-	r.NonceCount[r.From.String()] = r.Count + r.stateDB.GetNonce(r.From)
-	if _, ok := r.ReturnObj[r.To.String()]; !ok {
-		r.ReturnObj[r.To.String()] = LayerTwo{Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.To))}}}
-	}
 }
 func (r *TracerService) Result() (interface{}, error) {
-	// r.NonceList = append(r.NonceList, hexutil.EncodeUint64(r.stateDB.GetNonce(r.To)), hexutil.EncodeUint64(r.stateDB.GetNonce(r.From)))
-	// r.UltimateToBalance = hexutil.EncodeBig(r.stateDB.GetBalance(r.To))
-	// r.UltimateFromBalance = hexutil.EncodeBig(r.stateDB.GetBalance(r.From))
-	// r.UltimateMinerBalance = hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))
-	// r.ReturnObj[r.To.String()] = LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(to))}}}
+
 	for addrHex, account := range r.ReturnObj {
 		addr := core.HexToAddress(addrHex)
-		// if addr == r.Miner{
-		// 	account
-		// }
 		account.Balance.Interior.To = hexutil.EncodeBig(r.stateDB.GetBalance(addr))
-		// account.Nonce.Interior.To = hexutil.EncodeUint64(r.stateDB.GetNonce(addr))
-		// if account.Nonce == nil && account.Balance == nil && len(account.Storage) == 0 {
+		account.Nonce.Interior.To = hexutil.EncodeUint64(r.stateDB.GetNonce(addr))
+		// account.Nonce.Interior.To == account.Nonce.Interior.From && account.Balance.Interior.To == account.Balance.Interior.From && len(account.Storage) == 0 {
 		// 	delete(r.ReturnObj, addrHex)
 		// }
+		if account.Balance.Interior.From == "0x0" && r.stateDB.GetCode(addr) == nil && r.stateDB.GetNonce(addr) == 0 {
+			account.Balance.New = true
+			account.Nonce.New = true
+			// account.Code.New = true
+		}
 	}
 	return r, nil
 }
