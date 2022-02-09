@@ -205,10 +205,15 @@ func AppendAncient(number uint64, hash, headerBytes, body, receipts, td []byte) 
 		log.Warn("Could not decode ancient header", "block", number)
 		return
 	}
-	for backend == nil {
-		time.Sleep(250 * time.Millisecond)
-	}
-	backend.ChainDb().Delete(append([]byte("su"), header.Root.Bytes()...))
+	go func() {
+		// Background this so we can clean up once the backend is set, but we don't
+		// block the creation of the backend.
+		for backend == nil {
+			time.Sleep(250 * time.Millisecond)
+		}
+		backend.ChainDb().Delete(append([]byte("su"), header.Root.Bytes()...))
+	}()
+
 }
 
 // NewHead is invoked when a new block becomes the latest recognized block. We
