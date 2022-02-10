@@ -85,22 +85,12 @@ func (service *IsSyncedService) IsSynced(ctx context.Context) (interface{}, erro
 		highest = block.NumberU64()
 	}
 	return map[string]interface{}{
-		"startingBlock":       fmt.Sprintf("%#x", (progress.StartingBlock())),
-		"currentBlock":        fmt.Sprintf("%#x", (progress.CurrentBlock())),
-		"highestBlock":        fmt.Sprintf("%#x", (highest)),
-		"syncedAccounts":      fmt.Sprintf("%#x", (progress.SyncedAccounts())),
-		"syncedAccountBytes":  fmt.Sprintf("%#x", (progress.SyncedAccountBytes())),
-		"syncedBytecodes":     fmt.Sprintf("%#x", (progress.SyncedBytecodes())),
-		"syncedBytecodeBytes": fmt.Sprintf("%#x", (progress.SyncedBytecodeBytes())),
-		"syncedStorage":       fmt.Sprintf("%#x", (progress.SyncedStorage())),
-		"syncedStorageBytes":  fmt.Sprintf("%#x", (progress.SyncedStorageBytes())),
-		"healedTrienodes":     fmt.Sprintf("%#x", (progress.HealedTrienodes())),
-		"healedTrienodeBytes": fmt.Sprintf("%#x", (progress.HealedTrienodeBytes())),
-		"healedBytecodes":     fmt.Sprintf("%#x", (progress.HealedBytecodes())),
-		"healedBytecodeBytes": fmt.Sprintf("%#x", (progress.HealedBytecodeBytes())),
-		"healingTrienodes":    fmt.Sprintf("%#x", (progress.HealingTrienodes())),
-		"healingBytecode":     fmt.Sprintf("%#x", (progress.HealingBytecode())),
-		"activePeers":         peers,
-		"nodeIsSynced":        peers && progress.CurrentBlock() >= progress.HighestBlock(),
+		"startingBlock": fmt.Sprintf("%#x", (progress.StartingBlock())),
+		"currentBlock":  fmt.Sprintf("%#x", (progress.CurrentBlock())),
+		"highestBlock":  fmt.Sprintf("%#x", (highest)),
+		"pulledStates":  fmt.Sprintf("%#x", (progress.PulledStates())),
+		"knownStates":   fmt.Sprintf("%#x", (progress.KnownStates())),
+		"activePeers":   peers,
+		"nodeIsSynced":  peers && progress.CurrentBlock() >= progress.HighestBlock(),
 	}, err
 }
