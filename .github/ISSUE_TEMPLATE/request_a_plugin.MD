@@ -1,6 +1,6 @@
 ---
-name: Request .
-about: Are you having problems with an existing plugin? Let us know. 
+name: Request a new plugin.
+about: Have an idea about a new plugin? Let us know. 
 title: ''
 labels: 'type:bug'
 assignees: ''
