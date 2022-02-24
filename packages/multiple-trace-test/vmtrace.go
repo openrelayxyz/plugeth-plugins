@@ -13,6 +13,14 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 )
 
+
+// type OuterResult struct {
+// 	Output    hexutil.Bytes `json:"output"`
+// 	StateDiff interface{}   `json:"stateDiff"`
+// 	Trace     []string      `json:"trace"`
+// 	VMTrace   *string       `json:"vmTrace"`
+// }
+
 type VMTrace struct {
 	Code            hexutil.Bytes `json:"code"`
 	Ops             []Ops         `json:"ops"`
@@ -48,18 +56,18 @@ type Store struct {
 	Value *uint256.Int `json:"val"`
 }
 
-var Tracers = map[string]func(core.StateDB) core.TracerResult{
-	"plugethVMTracer": func(sdb core.StateDB) core.TracerResult {
-		return &TracerService{StateDB: sdb}
-	},
-}
+// var Tracers = map[string]func(core.StateDB) core.TracerResult{
+// 	"plugethVMTracer": func(sdb core.StateDB) core.TracerResult {
+// 		return &TracerService{StateDB: sdb}
+// 	},
+// }
 
 func (vm *ParityTrace) VMTraceVarient(ctx context.Context, txHash core.Hash) (interface{}, error) {
 	client, err := vm.stack.Attach()
 	if err != nil {
 		return nil, err
 	}
-	tr := TracerService{}
+	tr := VMTracerService{}
 	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethVMTracer"})
 	// output := string(tr.Output)
 	result := tr.CurrentTrace
@@ -82,7 +90,8 @@ func getData(data []byte, start uint64, size uint64) []byte {
 	return d
 }
 
-type TracerService struct {
+type VMTracerService struct {
+
 	StateDB      core.StateDB
 	CurrentTrace *VMTrace
 	Output       hexutil.Bytes
@@ -91,10 +100,10 @@ type TracerService struct {
 	warmAccess   bool
 }
 
-func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
+func (r *VMTracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
 	r.CurrentTrace = &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}}
 }
-func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, Data []byte, depth int, err error) {
+func (r *VMTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, Data []byte, depth int, err error) {
 	warm := false
 	count := 0
 	direction := 0
@@ -228,12 +237,12 @@ func (r *TracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint64
 		PC: pc}
 	r.CurrentTrace.Ops = append(r.CurrentTrace.Ops, ops)
 }
-func (r *TracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
+func (r *VMTracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
 }
-func (r *TracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+func (r *VMTracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
 	r.Output = output
 }
-func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
+func (r *VMTracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
 	// if restricted.OpCode(type).String() == "CALLDATACOPY" {
 	//
 	// }
@@ -241,7 +250,7 @@ func (r *TracerService) CaptureEnter(typ core.OpCode, from core.Address, to core
 	r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Sub = trace
 	r.CurrentTrace = trace
 }
-func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
+func (r *VMTracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	r.CurrentTrace = r.CurrentTrace.parent
 	r.CurrentTrace.lastReturnValue = output
 	lastOpUsed := r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-2].Ex.Used
@@ -258,6 +267,6 @@ func (r *TracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	}
 	// r.Output = output
 }
-func (r *TracerService) Result() (interface{}, error) {
+func (r *VMTracerService) Result() (interface{}, error) {
 	return r, nil
 }
