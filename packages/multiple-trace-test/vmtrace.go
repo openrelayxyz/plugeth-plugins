@@ -13,14 +13,6 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 )
 
-
-// type OuterResult struct {
-// 	Output    hexutil.Bytes `json:"output"`
-// 	StateDiff interface{}   `json:"stateDiff"`
-// 	Trace     []string      `json:"trace"`
-// 	VMTrace   *string       `json:"vmTrace"`
-// }
-
 type VMTrace struct {
 	Code            hexutil.Bytes `json:"code"`
 	Ops             []Ops         `json:"ops"`
@@ -56,20 +48,13 @@ type Store struct {
 	Value *uint256.Int `json:"val"`
 }
 
-// var Tracers = map[string]func(core.StateDB) core.TracerResult{
-// 	"plugethVMTracer": func(sdb core.StateDB) core.TracerResult {
-// 		return &TracerService{StateDB: sdb}
-// 	},
-// }
-
-func (vm *ParityTrace) VMTraceVarient(ctx context.Context, txHash core.Hash) (interface{}, error) {
+func (vm *ParityTrace) VMTraceVariant(ctx context.Context, txHash core.Hash) (interface{}, error) {
 	client, err := vm.stack.Attach()
 	if err != nil {
 		return nil, err
 	}
 	tr := VMTracerService{}
 	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethVMTracer"})
-	// output := string(tr.Output)
 	result := tr.CurrentTrace
 	return result, nil
 }

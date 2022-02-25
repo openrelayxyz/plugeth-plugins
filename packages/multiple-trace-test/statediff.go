@@ -79,21 +79,13 @@ func (s *Star) UnmarshalJSON(input []byte) error {
 // 	},
 // }
 
-func (sd *ParityTrace) StateDiffVarient(ctx context.Context, txHash core.Hash) (map[string]*LayerTwo, error) {
+func (sd *ParityTrace) StateDiffVariant(ctx context.Context, txHash core.Hash) (map[string]*LayerTwo, error) {
 	client, err := sd.stack.Attach()
 	if err != nil {
 		return nil, err
 	}
 	tr := SDTracerService{}
 	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethStateDiffTracer"})
-
-	// trace := make([]string, 0)
-	// result := OuterResult{
-	// 	Output:    tr.Output,
-	// 	StateDiff: tr.ReturnObj,
-	// 	Trace:     trace,
-	// 	VMTrace:   nil,
-	// }
 
 	result := tr.ReturnObj
 

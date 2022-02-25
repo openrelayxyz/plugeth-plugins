@@ -167,7 +167,7 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	return result
 }
 
-func (ap *ParityTrace) TraceVarient(ctx context.Context, txHash core.Hash) ([]*ParityResult, error) {
+func (ap *ParityTrace) TraceVariant(ctx context.Context, txHash core.Hash) ([]*ParityResult, error) {
 	client, err := ap.stack.Attach()
 	if err != nil {
 		return nil, err

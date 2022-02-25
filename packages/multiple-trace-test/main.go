@@ -61,15 +61,15 @@ func (vm *ParityTrace) ReplayTransaction(ctx context.Context, txHash core.Hash, 
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				result.Trace, err = vm.TraceVarient(ctx, txHash)
+				result.Trace, err = vm.TraceVariant(ctx, txHash)
 				if err != nil {return nil, err}
 				}
 		if typ == "vmTrace" {
-			  result.VMTrace, err = vm.VMTraceVarient(ctx, txHash)
+			  result.VMTrace, err = vm.VMTraceVariant(ctx, txHash)
 					if err != nil {return nil, err}
 		    }
 		if typ == "stateDiff" {
-			result.StateDiff, err = vm.StateDiffVarient(ctx, txHash)
+			result.StateDiff, err = vm.StateDiffVariant(ctx, txHash)
 				if err != nil {return nil, err}
 				    }
 		}
