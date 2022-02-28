@@ -73,32 +73,19 @@ func (s *Star) UnmarshalJSON(input []byte) error {
 	return fmt.Errorf("cannot unmarshall json")
 }
 
-// var Tracers = map[string]func(core.StateDB, core.BlockContext) core.TracerResult{
-// 	"plugethStateDiffTracer": func(sdb core.StateDB, bctx core.BlockContext) core.TracerResult {
-// 		return &TracerService{stateDB: sdb, blockContext: bctx}
-// 	},
-// }
-
-func (pt *ParityTrace) StateDiffVariant(ctx context.Context, bkNum string) ([]map[string]*LayerTwo, error) {
+func (pt *ParityTrace) StateDiffVariant(ctx context.Context, bkNum string) ([]struct{Result SDTracerService}, error) {
 	client, err := pt.stack.Attach()
 	if err != nil {
 		return nil, err
 	}
-	// tr := SDTracerService{}
-	// err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethStateDiffTracer"})
-
-	sds := []SDTracerService{}
+	sds := []struct {
+		Result SDTracerService
+	}{}
 	err = client.Call(&sds, "debug_traceBlockByNumber", bkNum, map[string]string{"tracer": "plugethStateDiffTracer"})
 	if err != nil {
 		return nil, err
 	}
-
-	var result []map[string]*LayerTwo
-	for _, object := range sds {
-		result = append(result, object.ReturnObj)
-	}
-
-	return result, err
+	return sds, err
 }
 
 type SDTracerService struct {
