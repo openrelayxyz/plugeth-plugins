@@ -151,9 +151,9 @@ type TracerService struct {
 func (r *TracerService) CapturePreStart(from core.Address, to *core.Address, input []byte, gas uint64, value *big.Int) {
 	r.ReturnObj = make(map[string]*LayerTwo)
 	r.Miner = r.blockContext.Coinbase
-	r.ParityMiner = core.HexToAddress("0x0000000000000000000000000000000000000000")
 	r.MinerInitBalance = r.stateDB.GetBalance(r.Miner)
-	r.PMinerInitBalance = r.stateDB.GetBalance(r.ParityMiner)
+	// r.ParityMiner = core.HexToAddress("0x0000000000000000000000000000000000000000")
+	// r.PMinerInitBalance = r.stateDB.GetBalance(r.ParityMiner)
 	// r.To = to
 	// r.From = from
 	if to != nil {if _, ok := r.ReturnObj[to.String()]; !ok {
@@ -164,12 +164,12 @@ func (r *TracerService) CapturePreStart(from core.Address, to *core.Address, inp
 		r.ReturnObj[from.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(from))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(from))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(from))}, false}}
 	}
 
-	// if _, ok := r.ReturnObj[r.Miner.String()]; !ok {
-	// 	r.ReturnObj[r.Miner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.Miner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.Miner))}, false}}
-	// }
-	if _, ok := r.ReturnObj[r.ParityMiner.String()]; !ok {
-		r.ReturnObj[r.ParityMiner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.PMinerInitBalance)}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.ParityMiner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.ParityMiner))}, false}}
+	if _, ok := r.ReturnObj[r.Miner.String()]; !ok {
+		r.ReturnObj[r.Miner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.Miner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.Miner))}, false}}
 	}
+	// if _, ok := r.ReturnObj[r.ParityMiner.String()]; !ok {
+	// 	r.ReturnObj[r.ParityMiner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.PMinerInitBalance)}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.ParityMiner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.ParityMiner))}, false}}
+	// }
 }
 
 func (r *TracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
