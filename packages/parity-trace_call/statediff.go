@@ -148,18 +148,18 @@ func (r *SDTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 	case "SSTORE":
 		popVal := scope.Stack().Back(0).Bytes()
 		storageFrom := r.stateDB.GetState(scope.Contract().Address(), core.BytesToHash(popVal)).String()
-		storageTo := core.BytesToHash(scope.Stack().Back(1).Bytes()).String()
+		// storageTo := core.BytesToHash(scope.Stack().Back(1).Bytes()).String()
 		storageHash := core.BytesToHash(popVal).String()
 		addr := scope.Contract().Address().String()
-		if storageTo != storageFrom {
-			if storage, ok := r.ReturnObj[addr].Storage[storageHash]; ok {
-				storage.Interior.To = storageTo
-			} else {
+		// if storageTo != storageFrom {
+			if _, ok := r.ReturnObj[addr].Storage[storageHash]; !ok {
+			// 	storage.Interior.To = storageTo
+			// } else {
 
-				r.ReturnObj[addr].Storage[storageHash] = &Star{Interior{From: storageFrom, To: storageTo}, false}
+				r.ReturnObj[addr].Storage[storageHash] = &Star{Interior{From: storageFrom}, false}
 			}
 		}
-	}
+	// }
 
 }
 func (r *SDTracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
@@ -195,6 +195,14 @@ func (r *SDTracerService) Result() (interface{}, error) {
 		if addr == r.ParityMiner {
 			account.Balance.Interior.To = hexutil.EncodeBig(new(big.Int).Add(r.PMinerInitBalance, minerDiff))
 		}
+		for storageHash, data := range account.Storage {
+			storageTo := r.stateDB.GetState(addr, core.HexToHash(storageHash)).String()
+			if storageTo != data.Interior.From {
+				data.Interior.To = storageTo
+			} else {
+				delete(account.Storage, storageHash)
+			}
+			}
 
 		if account.Nonce.Interior.To == account.Nonce.Interior.From && account.Balance.Interior.To == account.Balance.Interior.From && account.Code.Interior.To == account.Code.Interior.From && len(account.Storage) == 0 {
 			delete(r.ReturnObj, addrHex)

@@ -24,11 +24,11 @@ type Ops struct {
 	pushcount   int
 	orientation int
 	warmAccess  bool
+	Op          string   `json:"Op,omitempty"`
 	Cost        uint64   `json:"cost"`
 	Ex          Ex       `json:"ex"`
 	PC          uint64   `json:"pc"`
 	Sub         *VMTrace `json:"sub"`
-	Op          string   `json:"Op,omitempty"`
 }
 
 type Ex struct {
