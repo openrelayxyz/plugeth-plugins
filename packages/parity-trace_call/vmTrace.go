@@ -48,15 +48,16 @@ type Store struct {
 	Value *uint256.Int `json:"val"`
 }
 
-func (vm *ParityTrace) VMTraceVariant(ctx context.Context, txObject map[string]string, bkNum string) (interface{}, error) {
+func (vm *ParityTrace) VMTraceVariant(ctx context.Context, txObject map[string]string, bkNum string) (interface{}, string, error) {
 	client, err := vm.stack.Attach()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	tr := VMTracerService{}
 	err = client.Call(&tr, "debug_traceCall", txObject, bkNum, map[string]string{"tracer": "plugethVMTracer"})
 	result := tr.CurrentTrace
-	return result, nil
+	output := hexutil.Encode(tr.Output)
+	return result, output, nil
 }
 
 //Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode

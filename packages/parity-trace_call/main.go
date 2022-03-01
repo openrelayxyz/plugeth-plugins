@@ -57,21 +57,27 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 
 func (vm *ParityTrace) Call(ctx context.Context, txObject map[string]string, tracerType []string) (interface{}, error) {
 	result := &FinalResult{}
+	outputs := []string{}
+	var output string
 	var err error
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				result.Trace, err = vm.TraceVariant(ctx, txObject, "latest")
+				result.Trace, output, err = vm.TraceVariant(ctx, txObject, "latest")
 				if err != nil {return nil, err}
+				outputs = append(outputs, output)
 				}
 		if typ == "vmTrace" {
-			  result.VMTrace, err = vm.VMTraceVariant(ctx, txObject, "latest")
+			  result.VMTrace, output, err = vm.VMTraceVariant(ctx, txObject, "latest")
 					if err != nil {return nil, err}
+					outputs = append(outputs, string(output))
 		    }
 		if typ == "stateDiff" {
-			result.StateDiff, err = vm.StateDiffVariant(ctx, txObject, "latest")
+			result.StateDiff, output, err = vm.StateDiffVariant(ctx, txObject, "latest")
 				if err != nil {return nil, err}
+				outputs = append(outputs, string(output))
 				    }
 		}
+	result.Output = outputs[0]
 	return result, nil
 }

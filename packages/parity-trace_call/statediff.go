@@ -73,17 +73,17 @@ func (s *Star) UnmarshalJSON(input []byte) error {
 	return fmt.Errorf("cannot unmarshall json")
 }
 
-func (sd *ParityTrace) StateDiffVariant(ctx context.Context, txObject map[string]string, bkNum string) (map[string]*LayerTwo, error) {
+func (sd *ParityTrace) StateDiffVariant(ctx context.Context, txObject map[string]string, bkNum string) (map[string]*LayerTwo, string, error) {
 	client, err := sd.stack.Attach()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	tr := SDTracerService{}
 	err = client.Call(&tr, "debug_traceCall", txObject, bkNum, map[string]string{"tracer": "plugethStateDiffTracer"})
 
-	result := tr.ReturnObj
+	object, output := tr.ReturnObj, hexutil.Encode(tr.Output)
 
-	return result, err
+	return object, output, err
 }
 
 type SDTracerService struct {
@@ -115,12 +115,12 @@ func (r *SDTracerService) CapturePreStart(from core.Address, to *core.Address, i
 		r.ReturnObj[from.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(from))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(from))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(from))}, false}}
 	}
 
-	// if _, ok := r.ReturnObj[r.Miner.String()]; !ok {
-	// 	r.ReturnObj[r.Miner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.Miner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.Miner))}, false}}
-	// }
-	if _, ok := r.ReturnObj[r.ParityMiner.String()]; !ok {
-		r.ReturnObj[r.ParityMiner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.PMinerInitBalance)}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.ParityMiner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.ParityMiner))}, false}}
+	if _, ok := r.ReturnObj[r.Miner.String()]; !ok {
+		r.ReturnObj[r.Miner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.stateDB.GetBalance(r.Miner))}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.Miner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.Miner))}, false}}
 	}
+	// if _, ok := r.ReturnObj[r.ParityMiner.String()]; !ok {
+	// 	r.ReturnObj[r.ParityMiner.String()] = &LayerTwo{Storage: make(map[string]*Star), Balance: &Star{Interior{From: hexutil.EncodeBig(r.PMinerInitBalance)}, false}, Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(r.ParityMiner))}, false}, Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(r.ParityMiner))}, false}}
+	// }
 }
 
 func (r *SDTracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {

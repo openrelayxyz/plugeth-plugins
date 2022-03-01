@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	// "github.com/openrelayxyz/plugeth-utils/core"
+	//"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 )
 
 
@@ -167,10 +168,10 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	return result
 }
 
-func (ap *ParityTrace) TraceVariant(ctx context.Context, txObject map[string]string, bkNum string) ([]*ParityResult, error) {
+func (ap *ParityTrace) TraceVariant(ctx context.Context, txObject map[string]string, bkNum string) ([]*ParityResult, string, error) {
 	client, err := ap.stack.Attach()
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	gr := GethResponse{}
 	client.Call(&gr, "debug_traceCall", txObject, bkNum, map[string]string{"tracer": "callTracer"})
@@ -179,7 +180,7 @@ func (ap *ParityTrace) TraceVariant(ctx context.Context, txObject map[string]str
 	if gr.Output == "" {
 		gr.Output = "0x"
 	}
-	// output := gr.Output
+	output := gr.Output
 	trace := gp
-	return trace, err
+	return trace, output, err
 }
