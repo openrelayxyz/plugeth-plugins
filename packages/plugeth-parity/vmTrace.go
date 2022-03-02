@@ -48,15 +48,25 @@ type Store struct {
 	Value *uint256.Int `json:"val"`
 }
 
-func (vm *ParityTrace) VMTraceVariant(ctx context.Context, txObject map[string]interface{}) (interface{}, string, error) {
+func (vm *ParityTrace) VMTraceVariantZero(ctx context.Context, txObject map[string]interface{}) (interface{}, string, error) {
 	client, err := vm.stack.Attach()
 	if err != nil {
 		return nil, "", err
 	}
 	tr := VMTracerService{}
 	err = client.Call(&tr, "debug_traceCall", txObject, "latest", map[string]string{"tracer": "plugethVMTracer"})
-	result := tr.CurrentTrace
-	output := hexutil.Encode(tr.Output)
+	result, output := tr.CurrentTrace, hexutil.Encode(tr.Output)
+	return result, output, nil
+}
+
+func (vm *ParityTrace) VMTraceVariantOne(ctx context.Context, txHash core.Hash) (interface{}, string, error) {
+	client, err := vm.stack.Attach()
+	if err != nil {
+		return nil, "", err
+	}
+	tr := VMTracerService{}
+	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethVMTracer"})
+	result, output := tr.CurrentTrace, hexutil.Encode(tr.Output)
 	return result, output, nil
 }
 

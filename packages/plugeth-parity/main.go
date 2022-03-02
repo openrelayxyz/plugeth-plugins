@@ -65,15 +65,15 @@ func (pt *ParityTrace) Call(ctx context.Context, txObject map[string]interface{}
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				result.Trace, output, err = pt.TraceVariant(ctx, txObject)
+				result.Trace, output, err = pt.TraceVariantZero(ctx, txObject)
 				if err != nil {return nil, err}
 			}
 		if typ == "vmTrace" {
-			  result.VMTrace, output, err = pt.VMTraceVariant(ctx, txObject)
+			  result.VMTrace, output, err = pt.VMTraceVariantZero(ctx, txObject)
 					if err != nil {return nil, err}
 			}
 		if typ == "stateDiff" {
-			result.StateDiff, output, err = pt.StateDiffVariant(ctx, txObject)
+			result.StateDiff, output, err = pt.StateDiffVariantZero(ctx, txObject)
 				if err != nil {return nil, err}
 		}
 	}
@@ -113,15 +113,38 @@ func (pt *ParityTrace) RawTransaction(ctx context.Context, data hexutil.Bytes, t
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				result.Trace, output, err = pt.TraceVariant(ctx, txObject)
+				result.Trace, output, err = pt.TraceVariantZero(ctx, txObject)
 				if err != nil {return nil, err}
 				}
 		if typ == "vmTrace" {
-			  result.VMTrace, output, err = pt.VMTraceVariant(ctx, txObject)
+			  result.VMTrace, output, err = pt.VMTraceVariantZero(ctx, txObject)
 					if err != nil {return nil, err}
 		    }
 		if typ == "stateDiff" {
-			result.StateDiff, output, err = pt.StateDiffVariant(ctx, txObject)
+			result.StateDiff, output, err = pt.StateDiffVariantZero(ctx, txObject)
+				if err != nil {return nil, err}
+				    }
+		}
+	result.Output = output
+	return result, nil
+}
+
+func (pt *ParityTrace) ReplayTransaction(ctx context.Context, txHash core.Hash, tracerType []string) (interface{}, error) {
+	result := &FinalResult{}
+	var output string
+	var err error
+
+	for _, typ := range tracerType {
+		if typ == "trace" {
+				result.Trace, output, err = pt.TraceVariantOne(ctx, txHash)
+				if err != nil {return nil, err}
+				}
+		if typ == "vmTrace" {
+			  result.VMTrace, output, err = pt.VMTraceVariantOne(ctx, txHash)
+					if err != nil {return nil, err}
+		    }
+		if typ == "stateDiff" {
+			result.StateDiff, output, err = pt.StateDiffVariantOne(ctx, txHash)
 				if err != nil {return nil, err}
 				    }
 		}

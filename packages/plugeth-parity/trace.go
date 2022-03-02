@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"strings"
+
+	"github.com/openrelayxyz/plugeth-utils/core"
 )
 
 
@@ -165,13 +167,30 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	return result
 }
 
-func (ap *ParityTrace) TraceVariant(ctx context.Context, txObject map[string]interface{}) ([]*ParityResult, string, error) {
+func (ap *ParityTrace) TraceVariantZero(ctx context.Context, txObject map[string]interface{}) ([]*ParityResult, string, error) {
 	client, err := ap.stack.Attach()
 	if err != nil {
 		return nil, "", err
 	}
 	gr := GethResponse{}
 	client.Call(&gr, "debug_traceCall", txObject, "latest", map[string]string{"tracer": "callTracer"})
+	tAddress := make([]int, 0)
+	gp := GethParity(gr, tAddress, strings.ToLower(gr.Type))
+	if gr.Output == "" {
+		gr.Output = "0x"
+	}
+	output := gr.Output
+	trace := gp
+	return trace, output, err
+}
+
+func (ap *ParityTrace) TraceVariantOne(ctx context.Context, txHash core.Hash) ([]*ParityResult, string, error) {
+	client, err := ap.stack.Attach()
+	if err != nil {
+		return nil, "", err
+	}
+	gr := GethResponse{}
+	client.Call(&gr, "debug_traceTransaction", txHash, map[string]string{"tracer": "callTracer"})
 	tAddress := make([]int, 0)
 	gp := GethParity(gr, tAddress, strings.ToLower(gr.Type))
 	if gr.Output == "" {
