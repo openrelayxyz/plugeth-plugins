@@ -1,0 +1,93 @@
+package main
+
+
+
+import (
+	"context"
+	// "fmt"
+	// "math/big"
+	// "strconv"
+	// "time"
+
+	//"github.com/holiman/uint256"
+	"github.com/openrelayxyz/plugeth-utils/core"
+	// "github.com/openrelayxyz/plugeth-utils/restricted"
+	// "github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
+	"gopkg.in/urfave/cli.v1"
+)
+
+type FinalResult struct {
+	Output    string          `json:"output"`
+	StateDiff *string         `json:"stateDiff"`
+	Trace     []*ParityResult `json:"trace"`
+	VMTrace   interface{}        `json:"vmTrace"`
+}
+
+type ParityTrace struct {
+	backend core.Backend
+	stack   core.Node
+}
+
+func GetAPIs(stack core.Node, backend core.Backend) []core.API {
+	return []core.API{
+		{
+			Namespace: "trace",
+			Version:   "1.0",
+			Service:   &ParityTrace{backend, stack},
+			Public:    true,
+		},
+	}
+}
+
+var log core.Logger
+var httpApiFlagName = "http.api"
+
+func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+	log = logger
+	v := ctx.GlobalString(httpApiFlagName)
+	if v != "" {
+		ctx.GlobalSet(httpApiFlagName, v+",trace")
+	} else {
+		ctx.GlobalSet(httpApiFlagName, "eth,net,web3,trace")
+		log.Info("Loaded tester plugin")
+	}
+}
+
+func (vm *ParityTrace) ReplayTransaction(ctx context.Context, txHash core.Hash, tracerType []string) (interface{}, error) {
+ trace := make([]*ParityResult, 0)
+	var vmTrace interface{}
+
+	traceResult, err := vm.TraceVarient(ctx, txHash)
+	if err != nil {return nil, err}
+	vmTraceResult, err := vm.VMTraceVarient(ctx, txHash)
+	if err != nil {return nil, err}
+
+	// for _, typ := range tracerType {
+	// 	if typ == "trace" {
+	// 			trace = traceResult
+	// 			} else {
+	// 			trace = make([]*ParityResult, 0)
+	// 			}
+	// 	if typ == "vmTrace" {
+	// 		  vmTrace = vmTraceResult
+	// 	    } else {
+	// 		  vmTrace = nil
+	// 	    }
+	// 	}
+
+	for _, typ := range tracerType {
+		if typ == "trace" {
+				trace = traceResult
+				}
+		if typ == "vmTrace" {
+			  vmTrace = vmTraceResult
+		    }
+		}
+	result := &FinalResult{
+		// Output:    output,
+		StateDiff: nil,
+		Trace:     trace,
+		VMTrace:   vmTrace,
+	}
+	return result, nil
+}
