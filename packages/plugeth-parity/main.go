@@ -8,6 +8,7 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
+	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -16,7 +17,15 @@ type FinalResult struct {
 	Output    string          `json:"output"`
 	StateDiff map[string]*LayerTwo        `json:"stateDiff"`
 	Trace     []*ParityResult `json:"trace"`
+	TransactionHash core.Hash       `json:"transactionHash,omit empty"`
 	VMTrace   interface{}        `json:"vmTrace"`
+}
+
+type RawData struct {
+        TraceVar [][]*ParityResult
+        SDVar []struct{Result SDTracerService}
+        VMVar []struct{Result VMTracerService}
+        Outputs [][]string
 }
 
 type ParityTrace struct {
@@ -150,4 +159,76 @@ func (pt *ParityTrace) ReplayTransaction(ctx context.Context, txHash core.Hash, 
 		}
 	result.Output = output
 	return result, nil
+}
+
+func (pt *ParityTrace) ReplayBlockTransactions(ctx context.Context, bkNum string, tracerType []string) (interface{}, error) {
+	raw := RawData{}
+	outputs := [][]string{}
+	var err error
+
+	for _, typ := range tracerType {
+		if typ == "trace" {
+				raw.TraceVar, err = pt.TraceVariantTwo(ctx, bkNum)
+					if err != nil {return nil, err}
+				traceOutputs := []string{}
+				for _, item := range raw.TraceVar {
+					traceOutputs = append(traceOutputs, item[0].Result.Output)
+					}
+					outputs = append(outputs, traceOutputs)
+				}
+		if typ == "vmTrace" {
+				raw.VMVar, err = pt.VMTraceVariantTwo(ctx, bkNum)
+					if err != nil {return nil, err}
+				traceOutputs := []string{}
+				for _, item := range raw.VMVar {
+					traceOutputs = append(traceOutputs, string(item.Result.Output))
+					}
+					outputs = append(outputs, traceOutputs)
+				}
+		if typ == "stateDiff" {
+			raw.SDVar, err = pt.StateDiffVariantTwo(ctx, bkNum)
+				if err != nil {return nil, err}
+			sdOutputs := []string{}
+			for _, item := range raw.SDVar {
+				sdOutputs = append(sdOutputs, string(item.Result.Output))
+			}
+			outputs = append(outputs, sdOutputs)
+						}
+		}
+
+	blockNM, err := hexutil.DecodeUint64(bkNum)
+	if err != nil {
+		return nil, err
+	}
+	block := &types.Block{}
+	bkNB := int64(blockNM)
+	rlpBlock, err := pt.backend.BlockByNumber(ctx, bkNB)
+	if err != nil {
+		return nil, err
+	}
+	if err := rlp.DecodeBytes(rlpBlock, block); err != nil {
+		return nil, err
+	}
+
+	transactions := block.Transactions()
+	results := make([]FinalResult, len(transactions))
+	for i := range results {
+		if outputs[0][i] == "" {
+			outputs[0][i] = "0x"
+		}
+		results[i] = FinalResult{
+			Output: outputs[0][i],
+			TransactionHash: transactions[i].Hash(),
+		}
+		if len(raw.TraceVar) > 0 {
+				results[i].Trace = raw.TraceVar[i]
+			}
+		if len(raw.VMVar) > 0 {
+				results[i].VMTrace = raw.VMVar[i].Result.CurrentTrace
+			}
+		if len(raw.SDVar) > 0 {
+			results[i].StateDiff = raw.SDVar[i].Result.ReturnObj
+		}
+	}
+	return results, nil
 }

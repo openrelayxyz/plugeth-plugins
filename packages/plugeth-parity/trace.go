@@ -50,6 +50,10 @@ type GethResponse struct {
 	Calls   []GethResponse `json:"calls,omitempty"`
 }
 
+type OuterGethResponse struct {
+	Result GethResponse `json:"result"`
+}
+
 func FilterPrecompileCalls(calls []GethResponse) []GethResponse {
 	result := []GethResponse{}
 	for _, call := range calls {
@@ -199,4 +203,26 @@ func (ap *ParityTrace) TraceVariantOne(ctx context.Context, txHash core.Hash) ([
 	output := gr.Output
 	trace := gp
 	return trace, output, err
+}
+
+func (ap *ParityTrace) TraceVariantTwo(ctx context.Context, bkNum string) ([][]*ParityResult, error) {
+	client, err := ap.stack.Attach()
+	if err != nil {
+		return nil, err
+	}
+	gr := []OuterGethResponse{}
+	err = client.Call(&gr, "debug_traceBlockByNumber", bkNum, map[string]string{"tracer": "callTracer"})
+	if err != nil {
+		return nil, err
+	}
+
+	pr := [][]*ParityResult{}
+	for _, item := range gr {
+		tAddress := make([]int, 0)
+		pr = append(pr, GethParity(item.Result, tAddress, strings.ToLower(item.Result.Type)))
+	}
+
+	// output := gr.Output
+	result := pr
+	return result, err
 }

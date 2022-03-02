@@ -86,6 +86,20 @@ func getData(data []byte, start uint64, size uint64) []byte {
 	return d
 }
 
+func (vm *ParityTrace) VMTraceVariantTwo(ctx context.Context, bkNum string) ([]struct{Result VMTracerService}, error) {
+	client, err := vm.stack.Attach()
+	if err != nil {
+		return nil, err
+	}
+	// tr := []VMTracerService{}
+	tr := []struct {
+		Result VMTracerService
+	}{}
+	err = client.Call(&tr, "debug_traceBlockByNumber", bkNum, map[string]string{"tracer": "plugethVMTracer"})
+	r := tr
+	return r, nil
+}
+
 type VMTracerService struct {
 
 	StateDB      core.StateDB

@@ -98,6 +98,21 @@ func (sd *ParityTrace) StateDiffVariantOne(ctx context.Context, txHash core.Hash
 	return result, output, err
 }
 
+func (pt *ParityTrace) StateDiffVariantTwo(ctx context.Context, bkNum string) ([]struct{Result SDTracerService}, error) {
+	client, err := pt.stack.Attach()
+	if err != nil {
+		return nil, err
+	}
+	sds := []struct {
+		Result SDTracerService
+	}{}
+	err = client.Call(&sds, "debug_traceBlockByNumber", bkNum, map[string]string{"tracer": "plugethStateDiffTracer"})
+	if err != nil {
+		return nil, err
+	}
+	return sds, err
+}
+
 type SDTracerService struct {
 	stateDB      core.StateDB
 	blockContext core.BlockContext
@@ -148,7 +163,9 @@ func (r *SDTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 		storageHash := core.BytesToHash(popVal).String()
 		addr := scope.Contract().Address().String()
 		keys := [2]string{addr, storageHash}
+		if len(r.storageValuesSlice) > 0 {
 		r.storageValuesSlice[len(r.storageValuesSlice) - 1][keys] = storageTo
+	}
 			if _, ok := r.ReturnObj[addr].Storage[storageHash]; !ok {
 				r.ReturnObj[addr].Storage[storageHash] = &Star{Interior{From: storageFrom}, false}
 			}
@@ -190,11 +207,12 @@ func (r *SDTracerService) CaptureExit(output []byte, gasUsed uint64, err error) 
 }
 func (r *SDTracerService) Result() (interface{}, error) {
 	 minerDiff := new(big.Int).Sub(r.stateDB.GetBalance(r.Miner), r.MinerInitBalance)
+	 if len(r.storageValuesMap) > 0 {
 	 for k, v := range r.storageValuesSlice[0] {
 		 log.Warn("end result", "key_1", k)
 		 r.ReturnObj[k[0]].Storage[k[1]].Interior.To = v
 	 }
-
+}
 	for addrHex, account := range r.ReturnObj {
 		addr := core.HexToAddress(addrHex)
 		account.Balance.Interior.To = hexutil.EncodeBig(r.stateDB.GetBalance(addr))
