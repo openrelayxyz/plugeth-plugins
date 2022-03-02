@@ -26,7 +26,7 @@ var Tracers = map[string]func(core.StateDB,  core.BlockContext) core.TracerResul
 		return &VMTracerService{StateDB: sdb}
 	},
 	"plugethStateDiffTracer": func(sdb core.StateDB, bctx core.BlockContext) core.TracerResult {
-		return &SDTracerService{stateDB: sdb, blockContext: bctx}
+		return &SDTracerService{stateDB: sdb, blockContext: bctx, log:log}
 	},
 }
 
