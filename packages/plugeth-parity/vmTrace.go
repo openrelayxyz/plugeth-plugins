@@ -48,7 +48,7 @@ type Store struct {
 	Value *uint256.Int `json:"val"`
 }
 
-func (vm *ParityTrace) VMTraceVariantZero(ctx context.Context, txObject map[string]interface{}) (interface{}, string, error) {
+func (vm *ParityTrace) VMTraceVariantCall(ctx context.Context, txObject map[string]interface{}) (interface{}, string, error) {
 	client, err := vm.stack.Attach()
 	if err != nil {
 		return nil, "", err
@@ -59,7 +59,7 @@ func (vm *ParityTrace) VMTraceVariantZero(ctx context.Context, txObject map[stri
 	return result, output, nil
 }
 
-func (vm *ParityTrace) VMTraceVariantOne(ctx context.Context, txHash core.Hash) (interface{}, string, error) {
+func (vm *ParityTrace) VMTraceVariantTransaction(ctx context.Context, txHash core.Hash) (interface{}, string, error) {
 	client, err := vm.stack.Attach()
 	if err != nil {
 		return nil, "", err
@@ -86,12 +86,11 @@ func getData(data []byte, start uint64, size uint64) []byte {
 	return d
 }
 
-func (vm *ParityTrace) VMTraceVariantTwo(ctx context.Context, bkNum string) ([]struct{Result VMTracerService}, error) {
+func (vm *ParityTrace) VMTraceVariantBlock(ctx context.Context, bkNum string) ([]struct{Result VMTracerService}, error) {
 	client, err := vm.stack.Attach()
 	if err != nil {
 		return nil, err
 	}
-	// tr := []VMTracerService{}
 	tr := []struct {
 		Result VMTracerService
 	}{}
@@ -108,6 +107,7 @@ type VMTracerService struct {
 	Mem          Mem
 	Store        Store
 	warmAccess   bool
+	log core.Logger
 }
 
 func (r *VMTracerService) CaptureStart(from core.Address, to core.Address, create bool, input []byte, gas uint64, value *big.Int) {
@@ -238,7 +238,7 @@ func (r *VMTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 		warmAccess:  warm,
 		orientation: direction,
 		pushcount:   count,
-		Op:          restricted.OpCode(op).String(),
+		// Op:          restricted.OpCode(op).String(),
 		Cost:        cost,
 		Ex: Ex{Mem: mem,
 			Push:  make([]*uint256.Int, 0),
@@ -253,9 +253,6 @@ func (r *VMTracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Durat
 	r.Output = output
 }
 func (r *VMTracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
-	// if restricted.OpCode(type).String() == "CALLDATACOPY" {
-	//
-	// }
 	trace := &VMTrace{Code: r.StateDB.GetCode(to), Ops: []Ops{}, parent: r.CurrentTrace}
 	r.CurrentTrace.Ops[len(r.CurrentTrace.Ops)-1].Sub = trace
 	r.CurrentTrace = trace

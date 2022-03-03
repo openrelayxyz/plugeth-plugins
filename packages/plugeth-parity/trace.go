@@ -171,8 +171,8 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	return result
 }
 
-func (ap *ParityTrace) TraceVariantZero(ctx context.Context, txObject map[string]interface{}) ([]*ParityResult, string, error) {
-	client, err := ap.stack.Attach()
+func (tr *ParityTrace) TraceVariantCall(ctx context.Context, txObject map[string]interface{}) ([]*ParityResult, string, error) {
+	client, err := tr.stack.Attach()
 	if err != nil {
 		return nil, "", err
 	}
@@ -188,8 +188,8 @@ func (ap *ParityTrace) TraceVariantZero(ctx context.Context, txObject map[string
 	return trace, output, err
 }
 
-func (ap *ParityTrace) TraceVariantOne(ctx context.Context, txHash core.Hash) ([]*ParityResult, string, error) {
-	client, err := ap.stack.Attach()
+func (tr *ParityTrace) TraceVariantTransaction(ctx context.Context, txHash core.Hash) ([]*ParityResult, string, error) {
+	client, err := tr.stack.Attach()
 	if err != nil {
 		return nil, "", err
 	}
@@ -205,8 +205,8 @@ func (ap *ParityTrace) TraceVariantOne(ctx context.Context, txHash core.Hash) ([
 	return trace, output, err
 }
 
-func (ap *ParityTrace) TraceVariantTwo(ctx context.Context, bkNum string) ([][]*ParityResult, error) {
-	client, err := ap.stack.Attach()
+func (tr *ParityTrace) TraceVariantBlock(ctx context.Context, bkNum string) ([][]*ParityResult, error) {
+	client, err := tr.stack.Attach()
 	if err != nil {
 		return nil, err
 	}
@@ -222,7 +222,6 @@ func (ap *ParityTrace) TraceVariantTwo(ctx context.Context, bkNum string) ([][]*
 		pr = append(pr, GethParity(item.Result, tAddress, strings.ToLower(item.Result.Type)))
 	}
 
-	// output := gr.Output
 	result := pr
 	return result, err
 }

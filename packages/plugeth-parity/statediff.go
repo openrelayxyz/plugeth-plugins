@@ -72,7 +72,7 @@ func (s *Star) UnmarshalJSON(input []byte) error {
 	return fmt.Errorf("cannot unmarshall json")
 }
 
-func (sd *ParityTrace) StateDiffVariantZero(ctx context.Context, txObject map[string]interface{}) (map[string]*LayerTwo, string, error) {
+func (sd *ParityTrace) StateDiffVariantCall(ctx context.Context, txObject map[string]interface{}) (map[string]*LayerTwo, string, error) {
 	client, err := sd.stack.Attach()
 	if err != nil {
 		return nil, "", err
@@ -85,7 +85,7 @@ func (sd *ParityTrace) StateDiffVariantZero(ctx context.Context, txObject map[st
 	return object, output, err
 }
 
-func (sd *ParityTrace) StateDiffVariantOne(ctx context.Context, txHash core.Hash) (map[string]*LayerTwo, string, error) {
+func (sd *ParityTrace) StateDiffVariantTransaction(ctx context.Context, txHash core.Hash) (map[string]*LayerTwo, string, error) {
 	client, err := sd.stack.Attach()
 	if err != nil {
 		return nil, "", err
@@ -98,8 +98,8 @@ func (sd *ParityTrace) StateDiffVariantOne(ctx context.Context, txHash core.Hash
 	return result, output, err
 }
 
-func (pt *ParityTrace) StateDiffVariantTwo(ctx context.Context, bkNum string) ([]struct{Result SDTracerService}, error) {
-	client, err := pt.stack.Attach()
+func (sd *ParityTrace) StateDiffVariantBlock(ctx context.Context, bkNum string) ([]struct{Result SDTracerService}, error) {
+	client, err := sd.stack.Attach()
 	if err != nil {
 		return nil, err
 	}
@@ -156,7 +156,6 @@ func (r *SDTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 	opCode := restricted.OpCode(op).String()
 	switch opCode {
 	case "SSTORE":
-		r.log.Warn("Inside sstore case")
 		popVal := scope.Stack().Back(0).Bytes()
 		storageFrom := r.stateDB.GetState(scope.Contract().Address(), core.BytesToHash(popVal)).String()
 		storageTo := core.BytesToHash(scope.Stack().Back(1).Bytes()).String()
@@ -173,7 +172,6 @@ func (r *SDTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 }
 func (r *SDTracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
 	if len(r.storageValuesSlice) > 0 {
-		r.log.Warn("Inside capture fault", "discarding", r.storageValuesSlice[len(r.storageValuesSlice)-1], "depth", depth)
 		r.storageValuesSlice[len(r.storageValuesSlice)-1] = nil
 	}
 }
@@ -198,7 +196,6 @@ func (r *SDTracerService) CaptureEnter(typ core.OpCode, from core.Address, to co
 }
 func (r *SDTracerService) CaptureExit(output []byte, gasUsed uint64, err error) {
 	if len(r.storageValuesSlice) > 1 {
-		r.log.Warn("Inside capture exit", "merging", r.storageValuesSlice[len(r.storageValuesSlice)-1], "depth", len(r.storageValuesSlice))
 		for k, v := range r.storageValuesSlice[len(r.storageValuesSlice) - 1]  {
     r.storageValuesSlice[len(r.storageValuesSlice) - 2][k] = v
 }
@@ -209,7 +206,6 @@ func (r *SDTracerService) Result() (interface{}, error) {
 	 minerDiff := new(big.Int).Sub(r.stateDB.GetBalance(r.Miner), r.MinerInitBalance)
 	 if len(r.storageValuesMap) > 0 {
 	 for k, v := range r.storageValuesSlice[0] {
-		 log.Warn("end result", "key_1", k)
 		 r.ReturnObj[k[0]].Storage[k[1]].Interior.To = v
 	 }
 }
