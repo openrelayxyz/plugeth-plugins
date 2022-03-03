@@ -100,7 +100,7 @@ func (pt *ParityTrace) RawTransaction(ctx context.Context, data hexutil.Bytes, t
 	if err != nil {
 		return nil, err
 	}
-	//config := *params.GoerliChainConfig
+	
 	config := pt.backend.ChainConfig()
 	hs := types.LatestSigner(config)
 	sender, err := hs.Sender(&tx)

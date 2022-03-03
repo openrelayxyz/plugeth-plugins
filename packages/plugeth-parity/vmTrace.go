@@ -24,7 +24,7 @@ type Ops struct {
 	pushcount   int
 	orientation int
 	warmAccess  bool
-	Op          string   `json:"Op,omitempty"`
+	Op          string   `json:"-"`
 	Cost        uint64   `json:"cost"`
 	Ex          Ex       `json:"ex"`
 	PC          uint64   `json:"pc"`
@@ -55,7 +55,8 @@ func (vm *ParityTrace) VMTraceVariantCall(ctx context.Context, txObject map[stri
 	}
 	tr := VMTracerService{}
 	err = client.Call(&tr, "debug_traceCall", txObject, "latest", map[string]string{"tracer": "plugethVMTracer"})
-	result, output := tr.CurrentTrace, hexutil.Encode(tr.Output)
+
+	result, output := rv, hexutil.Encode(tr.Output)
 	return result, output, nil
 }
 
@@ -65,12 +66,24 @@ func (vm *ParityTrace) VMTraceVariantTransaction(ctx context.Context, txHash cor
 		return nil, "", err
 	}
 	tr := VMTracerService{}
-	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethVMTracer"})
+	err = client.Call(&tr, "debug_traceTransaction", txHash, map[string]string{"tracer": "plugethVMTracer"}
+
 	result, output := tr.CurrentTrace, hexutil.Encode(tr.Output)
 	return result, output, nil
 }
 
-//Note: If transactions is a contract deployment then the input is the 'code' that we are trying to capture with getCode
+func (vm *ParityTrace) VMTraceVariantBlock(ctx context.Context, bkNum string) ([]struct{Result VMTracerService}, error) {
+	client, err := vm.stack.Attach()
+	if err != nil {return nil, err}
+
+	tr := []struct {
+		Result VMTracerService
+		}{}
+		err = client.Call(&tr, "debug_traceBlockByNumber", bkNum, map[string]string{"tracer": "plugethVMTracer"})
+		r := tr
+		return r, nil
+	}
+
 
 func getData(data []byte, start uint64, size uint64) []byte {
 	length := uint64(len(data))
@@ -86,18 +99,6 @@ func getData(data []byte, start uint64, size uint64) []byte {
 	return d
 }
 
-func (vm *ParityTrace) VMTraceVariantBlock(ctx context.Context, bkNum string) ([]struct{Result VMTracerService}, error) {
-	client, err := vm.stack.Attach()
-	if err != nil {
-		return nil, err
-	}
-	tr := []struct {
-		Result VMTracerService
-	}{}
-	err = client.Call(&tr, "debug_traceBlockByNumber", bkNum, map[string]string{"tracer": "plugethVMTracer"})
-	r := tr
-	return r, nil
-}
 
 type VMTracerService struct {
 
@@ -238,7 +239,7 @@ func (r *VMTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 		warmAccess:  warm,
 		orientation: direction,
 		pushcount:   count,
-		// Op:          restricted.OpCode(op).String(),
+		Op:          restricted.OpCode(op).String(),
 		Cost:        cost,
 		Ex: Ex{Mem: mem,
 			Push:  make([]*uint256.Int, 0),
