@@ -171,13 +171,13 @@ func GethParity(gr GethResponse, address []int, t string) []*ParityResult {
 	return result
 }
 
-func (tr *ParityTrace) TraceVariantCall(ctx context.Context, txObject map[string]interface{}) ([]*ParityResult, string, error) {
+func (tr *ParityTrace) TraceVariantCall(ctx context.Context, txObject map[string]interface{}, bkNum string) ([]*ParityResult, string, error) {
 	client, err := tr.stack.Attach()
 	if err != nil {
 		return nil, "", err
 	}
 	gr := GethResponse{}
-	client.Call(&gr, "debug_traceCall", txObject, "latest", map[string]string{"tracer": "callTracer"})
+	client.Call(&gr, "debug_traceCall", txObject, bkNum, map[string]string{"tracer": "callTracer"})
 	tAddress := make([]int, 0)
 	gp := GethParity(gr, tAddress, strings.ToLower(gr.Type))
 	if gr.Output == "" {
@@ -205,23 +205,24 @@ func (tr *ParityTrace) TraceVariantTransaction(ctx context.Context, txHash core.
 	return trace, output, err
 }
 
-func (tr *ParityTrace) TraceVariantBlock(ctx context.Context, bkNum string) ([][]*ParityResult, error) {
+func (tr *ParityTrace) TraceVariantBlock(ctx context.Context, bkNum string) ([][]*ParityResult, []string, error) {
 	client, err := tr.stack.Attach()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	outputs := []string{}
 	gr := []OuterGethResponse{}
 	err = client.Call(&gr, "debug_traceBlockByNumber", bkNum, map[string]string{"tracer": "callTracer"})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
 	pr := [][]*ParityResult{}
 	for _, item := range gr {
+		outputs = append(outputs, item.Result.Output)
 		tAddress := make([]int, 0)
 		pr = append(pr, GethParity(item.Result, tAddress, strings.ToLower(item.Result.Type)))
 	}
 
 	result := pr
-	return result, err
+	return result, outputs, err
 }

@@ -67,22 +67,58 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 	}
 }
 
-func (pt *ParityTrace) Call(ctx context.Context, txObject map[string]interface{}, tracerType []string) (interface{}, error) {
+func (pt *ParityTrace) blockStringProcessing (ctx context.Context, bkNum string) (string, error) {
+	var err error
+	var currentBlockString string
+	var currentBlockUint64 uint64
+	var result string
+	client, err := pt.stack.Attach()
+	if err != nil {
+		return "", err
+	}
+	client.Call(&currentBlockString, "eth_blockNumber")
+	currentBlockUint64, err = hexutil.DecodeUint64(currentBlockString)
+	if err != nil {
+		return "", err
+	}
+	switch bkNum {
+	case "latest":
+		result = hexutil.EncodeUint64(currentBlockUint64 -1)
+	case "pending":
+		result = hexutil.EncodeUint64(currentBlockUint64 -2)
+	case "earliest":
+		result = hexutil.EncodeUint64(0)
+	default:
+		result = bkNum
+	}
+	return result, nil
+}
+
+func (pt *ParityTrace) Call(ctx context.Context, txObject map[string]interface{}, tracerType []string, bkNum ...string) (interface{}, error) {
 	result := &FinalResult{}
 	var output string
 	var err error
+	var bn string
+	if bkNum == nil {
+		bn = "latest"
+	} else {
+		bn, err = pt.blockStringProcessing(ctx, bkNum[0])
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				result.Trace, output, err = pt.TraceVariantCall(ctx, txObject)
+				result.Trace, output, err = pt.TraceVariantCall(ctx, txObject, bn)
 				if err != nil {return nil, err}
 			}
 		if typ == "vmTrace" {
-			  result.VMTrace, output, err = pt.VMTraceVariantCall(ctx, txObject)
+			  result.VMTrace, output, err = pt.VMTraceVariantCall(ctx, txObject, bn)
 					if err != nil {return nil, err}
 			}
 		if typ == "stateDiff" {
-			result.StateDiff, output, err = pt.StateDiffVariantCall(ctx, txObject)
+			result.StateDiff, output, err = pt.StateDiffVariantCall(ctx, txObject, bn)
 				if err != nil {return nil, err}
 		}
 	}
@@ -100,7 +136,7 @@ func (pt *ParityTrace) RawTransaction(ctx context.Context, data hexutil.Bytes, t
 	if err != nil {
 		return nil, err
 	}
-	
+
 	config := pt.backend.ChainConfig()
 	hs := types.LatestSigner(config)
 	sender, err := hs.Sender(&tx)
@@ -122,15 +158,15 @@ func (pt *ParityTrace) RawTransaction(ctx context.Context, data hexutil.Bytes, t
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				result.Trace, output, err = pt.TraceVariantCall(ctx, txObject)
+				result.Trace, output, err = pt.TraceVariantCall(ctx, txObject, "latest")
 				if err != nil {return nil, err}
 				}
 		if typ == "vmTrace" {
-			  result.VMTrace, output, err = pt.VMTraceVariantCall(ctx, txObject)
+			  result.VMTrace, output, err = pt.VMTraceVariantCall(ctx, txObject, "latest")
 					if err != nil {return nil, err}
 		    }
 		if typ == "stateDiff" {
-			result.StateDiff, output, err = pt.StateDiffVariantCall(ctx, txObject)
+			result.StateDiff, output, err = pt.StateDiffVariantCall(ctx, txObject, "latest")
 				if err != nil {return nil, err}
 				    }
 		}
@@ -164,39 +200,44 @@ func (pt *ParityTrace) ReplayTransaction(ctx context.Context, txHash core.Hash, 
 func (pt *ParityTrace) ReplayBlockTransactions(ctx context.Context, bkNum string, tracerType []string) (interface{}, error) {
 	raw := RawData{}
 	outputs := [][]string{}
+	var traceOutputs []string
 	var err error
+	bn, err := pt.blockStringProcessing(ctx, bkNum)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				raw.TraceVar, err = pt.TraceVariantBlock(ctx, bkNum)
+				raw.TraceVar, traceOutputs, err = pt.TraceVariantBlock(ctx, bn)
 					if err != nil {return nil, err}
-				traceOutputs := []string{}
-				for _, item := range raw.TraceVar {
-					traceOutputs = append(traceOutputs, item[0].Result.Output)
+				// traceOutputs := []string{}
+				for _, item := range traceOutputs {
+					traceOutputs = append(traceOutputs, item)
 					}
 					outputs = append(outputs, traceOutputs)
 				}
 		if typ == "vmTrace" {
-				raw.VMVar, err = pt.VMTraceVariantBlock(ctx, bkNum)
+				raw.VMVar, err = pt.VMTraceVariantBlock(ctx, bn)
 					if err != nil {return nil, err}
 				traceOutputs := []string{}
 				for _, item := range raw.VMVar {
-					traceOutputs = append(traceOutputs, string(item.Result.Output))
+					traceOutputs = append(traceOutputs, hexutil.Encode(item.Result.Output))
 					}
 					outputs = append(outputs, traceOutputs)
 				}
 		if typ == "stateDiff" {
-			raw.SDVar, err = pt.StateDiffVariantBlock(ctx, bkNum)
+			raw.SDVar, err = pt.StateDiffVariantBlock(ctx, bn)
 				if err != nil {return nil, err}
 			sdOutputs := []string{}
 			for _, item := range raw.SDVar {
-				sdOutputs = append(sdOutputs, string(item.Result.Output))
+				sdOutputs = append(sdOutputs, hexutil.Encode(item.Result.Output))
 			}
 			outputs = append(outputs, sdOutputs)
 						}
 		}
 
-	blockNM, err := hexutil.DecodeUint64(bkNum)
+	blockNM, err := hexutil.DecodeUint64(bn)
 	if err != nil {
 		return nil, err
 	}

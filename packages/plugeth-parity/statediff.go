@@ -72,13 +72,13 @@ func (s *Star) UnmarshalJSON(input []byte) error {
 	return fmt.Errorf("cannot unmarshall json")
 }
 
-func (sd *ParityTrace) StateDiffVariantCall(ctx context.Context, txObject map[string]interface{}) (map[string]*LayerTwo, string, error) {
+func (sd *ParityTrace) StateDiffVariantCall(ctx context.Context, txObject map[string]interface{}, bkNum string) (map[string]*LayerTwo, string, error) {
 	client, err := sd.stack.Attach()
 	if err != nil {
 		return nil, "", err
 	}
 	tr := SDTracerService{}
-	err = client.Call(&tr, "debug_traceCall", txObject, "latest", map[string]string{"tracer": "plugethStateDiffTracer"})
+	err = client.Call(&tr, "debug_traceCall", txObject, bkNum, map[string]string{"tracer": "plugethStateDiffTracer"})
 
 	object, output := tr.ReturnObj, hexutil.Encode(tr.Output)
 	log.Warn("inside sd function")
