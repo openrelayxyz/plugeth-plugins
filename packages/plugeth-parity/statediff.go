@@ -165,6 +165,15 @@ func (r *SDTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 		if len(r.storageValuesSlice) > 0 {
 		r.storageValuesSlice[len(r.storageValuesSlice) - 1][keys] = storageTo
 	}
+	if _, ok := r.ReturnObj[addr]; !ok {
+		to := scope.Contract().Address()
+		r.ReturnObj[addr] = &LayerTwo{
+			Storage: make(map[string]*Star),
+			Balance: &Star{Interior{
+				From: hexutil.EncodeBig(r.stateDB.GetBalance(to))}, false},
+			Nonce: &Star{Interior{From: hexutil.EncodeUint64(r.stateDB.GetNonce(to))}, false},
+			Code: &Star{Interior{From: hexutil.Encode(r.stateDB.GetCode(to))}, false}}
+	}
 			if _, ok := r.ReturnObj[addr].Storage[storageHash]; !ok {
 				r.ReturnObj[addr].Storage[storageHash] = &Star{Interior{From: storageFrom}, false}
 			}

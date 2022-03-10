@@ -156,18 +156,22 @@ func (pt *ParityTrace) RawTransaction(ctx context.Context, data hexutil.Bytes, t
 	vl := hexutil.EncodeBig(tx.Value())
 	txObject["value"] = vl
 
+	bn, err := pt.blockStringProcessing(ctx, "pending")
+	if err != nil {
+		return nil, err
+	}
 
 	for _, typ := range tracerType {
 		if typ == "trace" {
-				result.Trace, output, err = pt.TraceVariantCall(ctx, txObject, "pending")
+				result.Trace, output, err = pt.TraceVariantCall(ctx, txObject, bn)
 				if err != nil {return nil, err}
 				}
 		if typ == "vmTrace" {
-			  result.VMTrace, output, err = pt.VMTraceVariantCall(ctx, txObject, "pending")
+			  result.VMTrace, output, err = pt.VMTraceVariantCall(ctx, txObject, bn)
 					if err != nil {return nil, err}
 		    }
 		if typ == "stateDiff" {
-			result.StateDiff, output, err = pt.StateDiffVariantCall(ctx, txObject, "pending")
+			result.StateDiff, output, err = pt.StateDiffVariantCall(ctx, txObject, bn)
 				if err != nil {return nil, err}
 				    }
 		}
