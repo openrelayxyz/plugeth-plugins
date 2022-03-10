@@ -12,7 +12,7 @@ trace_replayTransaction
 trace_replayBlockTransactions
 ```
 
-The plugin can be [built](https://docs.plugeth.org/en/latest/build.html) like any other PluGeth plugin. Once built just point towards a geth node and they will take the same arguments as the OpenEthereum documentation specifies.
+The plugin can be [built](https://docs.plugeth.org/en/latest/build.html) like any other PluGeth plugin. Once built just point towards a PluGeth node and they will take the same arguments as the OpenEthereum documentation specifies.
 
  ## Trace Variants
 
