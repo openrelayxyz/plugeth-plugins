@@ -184,6 +184,10 @@ func InitializeNode(stack core.Node, b restricted.Backend) {
 // StateUpdate gives us updates about state changes made in each block. We
 // cache them for short term use, and write them to disk for the longer term.
 func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.Hash]struct{}, accounts map[core.Hash][]byte, storage map[core.Hash]map[core.Hash][]byte, codeUpdates map[core.Hash][]byte) {
+	if backend == nil {
+		log.Warn("State update called before InitializeNode", "root", blockRoot)
+		return
+	}
 	su := &stateUpdate{
 		Destructs: destructs,
 		Accounts: accounts,
