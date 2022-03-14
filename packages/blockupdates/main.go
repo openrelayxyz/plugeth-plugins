@@ -191,8 +191,16 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.H
 		Code: codeUpdates,
 	}
 	cache.Add(blockRoot, su)
-	data, _ := rlp.EncodeToBytes(su)
-	backend.ChainDb().Put(append([]byte("su"), blockRoot.Bytes()...), data)
+	data, err := rlp.EncodeToBytes(su)
+	if err != nil {
+		log.Error("Failed to encode state update", "root", blockRoot, "err", err)
+		return
+	}
+	if err := backend.ChainDb().Put(append([]byte("su"), blockRoot.Bytes()...), data); err != nil {
+		log.Error("Failed to store state update", "root", blockRoot, "err", err)
+		return
+	}
+	log.Debug("Stored state update", "blockRoot", blockRoot)
 }
 
 // AppendAncient removes our state update records from leveldb as the
