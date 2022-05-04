@@ -334,8 +334,8 @@ func BlockUpdatesByNumber(number int64) (*types.Block, *big.Int, types.Receipts,
 		su = v.(*stateUpdate)
 	} else {
 		data, err := backend.ChainDb().Get(append([]byte("su"), block.Root().Bytes()...))
-		if err != nil { return nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("State Updates unavailable for block %v", block.Hash())}
-		if err := rlp.DecodeBytes(data, su); err != nil { return nil, nil, nil, nil, nil, nil, nil, fmt.Errorf("State updates unavailable for block %#x", block.Hash()) }
+		if err != nil { return &block, td, receipts, nil, nil, nil, nil, fmt.Errorf("State Updates unavailable for block %v", block.Hash())}
+		if err := rlp.DecodeBytes(data, su); err != nil { return &block, td, receipts, nil, nil, nil, nil, fmt.Errorf("State updates unavailable for block %#x", block.Hash()) }
 	}
 	return &block, td, receipts, su.Destructs, su.Accounts, su.Storage, su.Code, nil
 }
