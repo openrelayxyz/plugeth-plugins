@@ -315,6 +315,31 @@ type BlockUpdates struct{
 	backend restricted.Backend
 }
 
+func BlockUpdatesByNumber(number int64) (*types.Block, *big.Int, types.Receipts, map[core.Hash]struct{}, map[core.Hash][]byte, map[core.Hash]map[core.Hash][]byte, map[core.Hash][]byte, error) {
+	blockBytes, err := backend.BlockByNumber(context.Background(), int64(number))
+	if err != nil { return nil, nil, nil, nil, nil, nil, nil, err }
+	var block types.Block
+	if err := rlp.DecodeBytes(blockBytes, &block); err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, err
+	}
+	td := backend.GetTd(context.Background(), block.Hash())
+	receiptBytes, err := backend.GetReceipts(context.Background(), block.Hash())
+	if err != nil { return nil, nil, nil, nil, nil, nil, nil, err }
+	var receipts types.Receipts
+	if err := json.Unmarshal(receiptBytes, &receipts); err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, err
+	}
+	var su *stateUpdate
+	if v, ok := cache.Get(block.Root()); ok {
+		su = v.(*stateUpdate)
+	} else {
+		data, err := backend.ChainDb().Get(append([]byte("su"), block.Root().Bytes()...))
+		if err != nil { return &block, td, receipts, nil, nil, nil, nil, fmt.Errorf("State Updates unavailable for block %v", block.Hash())}
+		if err := rlp.DecodeBytes(data, su); err != nil { return &block, td, receipts, nil, nil, nil, nil, fmt.Errorf("State updates unavailable for block %#x", block.Hash()) }
+	}
+	return &block, td, receipts, su.Destructs, su.Accounts, su.Storage, su.Code, nil
+}
+
 // blockUpdate handles the serialization of a block
 func blockUpdates(ctx context.Context, block *types.Block) (map[string]interface{}, error)	{
 	result, err := RPCMarshalBlock(block, true, true)
