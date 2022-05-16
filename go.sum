@@ -16,8 +16,8 @@ github.com/jedisct1/go-minisign v0.0.0-20190909160543-45766022959e/go.mod h1:G1C
 github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
 github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
-github.com/openrelayxyz/plugeth-utils v0.0.16 h1:G/WOaW1tsRoPZT6t29+Cphf2vVB2UVqlBtd0DocG0hA=
-github.com/openrelayxyz/plugeth-utils v0.0.16/go.mod h1:YCPmIHj5B5v9qdgKFYhBYpZumXW5pjM8+3duJr/gElo=
+github.com/openrelayxyz/plugeth-utils v0.0.17 h1:HlDCPjB8Jmt5gYLXA1HyGcNekhnQQr/prCA2/THNpz4=
+github.com/openrelayxyz/plugeth-utils v0.0.17/go.mod h1:YCPmIHj5B5v9qdgKFYhBYpZumXW5pjM8+3duJr/gElo=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
