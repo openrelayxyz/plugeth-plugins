@@ -250,6 +250,20 @@ func newHead(block types.Block, hash core.Hash, td *big.Int) {
 		log.Debug("Skipping recently emitted block")
 		return
 	}
+	if recentEmits.Len() > 10 && !recentEmits.Contains(block.ParentHash()) {
+		blockRLP, err := backend.BlockByHash(context.Background(), block.ParentHash())
+		if err != nil {
+			log.Error("Could not get block for reorg", "hash", block.ParentHash(), "err", err)
+			return
+		}
+		var parentBlock types.Block
+		if err := rlp.DecodeBytes(blockRLP, &parentBlock); err != nil {
+			log.Error("Could not decode block during reorg", "hash", block.ParentHash(), "err", err)
+			return
+		}
+		td := backend.GetTd(context.Background(), parentBlock.Hash())
+		newHead(parentBlock, block.Hash(), td)
+	}
 	result, err := blockUpdates(context.Background(), &block)
 	if err != nil {
 		log.Error("Could not serialize block", "err", err, "hash", block.Hash())
