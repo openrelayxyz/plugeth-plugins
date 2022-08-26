@@ -14,7 +14,7 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
-	"gopkg.in/urfave/cli.v1"
+	"github.com/urfave/cli/v2"
 	"io"
 )
 
@@ -153,20 +153,20 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 	blockEvents = pl.GetFeed()
 	cache, _ = lru.New(128)
 	recentEmits, _ = lru.New(128)
-	if !ctx.GlobalBool(snapshotFlagName) {
+	if !ctx.Bool(snapshotFlagName) {
 		log.Warn("Snapshots are required for StateUpdate plugins, but are currently disabled. State Updates will be unavailable")
 	}
-	v := ctx.GlobalString(httpApiFlagName)
+	v := ctx.String(httpApiFlagName)
 	if v == "" {
-		ctx.GlobalSet(httpApiFlagName, "eth,net,web3,plugeth")
+		ctx.Set(httpApiFlagName, "eth,net,web3,plugeth")
 	} else if !strings.Contains(v, "plugeth") {
-		ctx.GlobalSet(httpApiFlagName, v+",plugeth")
+		ctx.Set(httpApiFlagName, v+",plugeth")
 	}
-	v = ctx.GlobalString(wsApiFlagName)
+	v = ctx.String(wsApiFlagName)
 	if v == "" {
-		ctx.GlobalSet(wsApiFlagName, "eth,net,web3,plugeth")
+		ctx.Set(wsApiFlagName, "eth,net,web3,plugeth")
 	} else if !strings.Contains(v, "plugeth") {
-		ctx.GlobalSet(wsApiFlagName, v+",plugeth")
+		ctx.Set(wsApiFlagName, v+",plugeth")
 	}
 	log.Info("Loaded block updater plugin")
 }
