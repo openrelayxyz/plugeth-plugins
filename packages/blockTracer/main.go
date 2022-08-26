@@ -28,11 +28,11 @@ func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) 
 	log = logger
 	pl = loader
 	events = pl.GetFeed()
-	v := ctx.GlobalString(httpApiFlagName)
+	v := ctx.String(httpApiFlagName)
 	if v == "" {
-		ctx.GlobalSet(wsApiFlagName, "eth,net,web3,plugeth")
+		ctx.Set(wsApiFlagName, "eth,net,web3,plugeth")
 	} else if !strings.Contains(v, "plugeth") {
-		ctx.GlobalSet(wsApiFlagName, v+",plugeth")
+		ctx.Set(wsApiFlagName, v+",plugeth")
 	}
 	log.Info("Loaded Block Tracer")
 }

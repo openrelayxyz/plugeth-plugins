@@ -31,11 +31,11 @@ var httpApiFlagName = "http.api"
 
 func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
-	v := ctx.GlobalString(httpApiFlagName)
+	v := ctx.String(httpApiFlagName)
 	if v != "" {
-		ctx.GlobalSet(httpApiFlagName, v+",plugeth")
+		ctx.Set(httpApiFlagName, v+",plugeth")
 	} else {
-		ctx.GlobalSet(httpApiFlagName, "eth,net,web3,plugeth")
+		ctx.Set(httpApiFlagName, "eth,net,web3,plugeth")
 		log.Info("Loaded isSynced plugin")
 	}
 }

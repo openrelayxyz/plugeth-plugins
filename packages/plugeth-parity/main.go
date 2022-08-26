@@ -58,11 +58,11 @@ var httpApiFlagName = "http.api"
 
 func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
-	v := ctx.GlobalString(httpApiFlagName)
+	v := ctx.String(httpApiFlagName)
 	if v != "" {
-		ctx.GlobalSet(httpApiFlagName, v+",trace")
+		ctx.Set(httpApiFlagName, v+",trace")
 	} else {
-		ctx.GlobalSet(httpApiFlagName, "eth,net,web3,trace")
+		ctx.Set(httpApiFlagName, "eth,net,web3,trace")
 		log.Info("Loaded plugeth-parity plugin")
 	}
 }
