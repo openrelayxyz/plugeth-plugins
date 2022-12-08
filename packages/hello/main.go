@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 	"github.com/openrelayxyz/plugeth-utils/core"
-	"github.com/urfave/cli/v2"
 )
 
 var (
@@ -37,7 +36,7 @@ func (*myservice) Timer(ctx context.Context) (<-chan int64, error) {
 }
 
 
-func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
 	log.Info("Initialized hello")
 }

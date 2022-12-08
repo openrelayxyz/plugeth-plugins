@@ -2,7 +2,6 @@ package main
 
 import (
 	"github.com/openrelayxyz/plugeth-utils/core"
-	"github.com/urfave/cli/v2"
 )
 
 type ShutdownService struct {
@@ -11,7 +10,7 @@ type ShutdownService struct {
 
 var log core.Logger
 
-func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
 }
 
