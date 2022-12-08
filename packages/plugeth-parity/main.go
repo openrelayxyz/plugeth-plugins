@@ -10,7 +10,6 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
-	"github.com/urfave/cli/v2"
 )
 
 type FinalResult struct {
@@ -56,7 +55,7 @@ func GetAPIs(stack core.Node, backend restricted.Backend) []core.API {
 var log core.Logger
 var httpApiFlagName = "http.api"
 
-func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
 	v := ctx.String(httpApiFlagName)
 	if v != "" {

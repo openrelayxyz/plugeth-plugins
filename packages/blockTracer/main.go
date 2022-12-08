@@ -9,7 +9,6 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
-	"github.com/urfave/cli/v2"
 )
 
 var (
@@ -24,7 +23,7 @@ var (
 	wsApiFlagName   = "ws.api"
 )
 
-func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
 	pl = loader
 	events = pl.GetFeed()

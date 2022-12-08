@@ -14,7 +14,6 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
-	"github.com/urfave/cli/v2"
 	"io"
 )
 
@@ -147,7 +146,7 @@ var (
 )
 
 // Initialize does initial setup of variables as the plugin is loaded.
-func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
 	pl = loader
 	blockEvents = pl.GetFeed()

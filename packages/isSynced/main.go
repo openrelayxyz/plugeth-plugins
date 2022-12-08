@@ -9,7 +9,6 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
-	"github.com/urfave/cli/v2"
 )
 
 type IsSyncedService struct {
@@ -29,7 +28,7 @@ var log core.Logger
 
 var httpApiFlagName = "http.api"
 
-func Initialize(ctx *cli.Context, loader core.PluginLoader, logger core.Logger) {
+func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
 	v := ctx.String(httpApiFlagName)
 	if v != "" {
