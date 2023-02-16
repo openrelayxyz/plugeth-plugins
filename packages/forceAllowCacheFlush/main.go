@@ -8,7 +8,6 @@ import (
 var log core.Logger
 
 type FlushCacheService struct {
-	stack   core.Node
 }
 
 func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
@@ -21,7 +20,7 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 		{
 			Namespace: "plugeth",
 			Version:   "1.0",
-			Service:   &FlushCacheService{stack},
+			Service:   &FlushCacheService{},
 			Public:    true,
 		},
 	}
@@ -29,12 +28,11 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 
 var val bool 
 
-func reSetVal() {
-	val = false
-}
-
 func FlushCache() bool {
-	defer reSetVal()
+	defer func() {
+		val = false
+	}()
+
 	return val
 }
 
