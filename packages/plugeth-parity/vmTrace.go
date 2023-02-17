@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
-	"time"
 
 	"github.com/holiman/uint256"
 	"github.com/openrelayxyz/plugeth-utils/core"
