@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
@@ -184,7 +183,7 @@ func (r *SDTracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint
 		r.storageValuesSlice[len(r.storageValuesSlice)-1] = nil
 	}
 }
-func (r *SDTracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
+func (r *SDTracerService) CaptureEnd(output []byte, gasUsed uint64, err error) {
 	r.Output = output
 }
 func (r *SDTracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
