@@ -1,11 +1,11 @@
 module github.com/openrelayxyz/plugeth-plugins
 
-go 1.18
+go 1.19
 
 require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/holiman/uint256 v1.2.0
-	github.com/openrelayxyz/plugeth-utils v0.0.21
+	github.com/openrelayxyz/plugeth-utils v0.0.22
 )
 
 require (
@@ -14,5 +14,3 @@ require (
 	golang.org/x/crypto v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
 )
-
-replace github.com/openrelayxyz/plugeth-utils => /home/philip/src/rivet/plugeth-utils
