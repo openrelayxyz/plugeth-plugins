@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 	"strconv"
+	"time"
 
 	"github.com/holiman/uint256"
 	"github.com/openrelayxyz/plugeth-utils/core"
@@ -249,7 +250,7 @@ func (r *VMTracerService) CaptureState(pc uint64, op core.OpCode, gas, cost uint
 }
 func (r *VMTracerService) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
 }
-func (r *VMTracerService) CaptureEnd(output []byte, gasUsed uint64, err error) {
+func (r *VMTracerService) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
 	r.Output = output
 }
 func (r *VMTracerService) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {

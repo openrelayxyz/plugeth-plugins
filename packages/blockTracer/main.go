@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/big"
 	"strings"
+	"time"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
@@ -114,7 +115,7 @@ func (r *TracerResult) CaptureState(pc uint64, op core.OpCode, gas, cost uint64,
 func (r *TracerResult) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
 }
 
-func (r *TracerResult) CaptureEnd(output []byte, gasUsed uint64, err error) {
+func (r *TracerResult) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
 	if len(r.CallStack) > 0 {
 		r.Results = append(r.CallStack)
 	}
