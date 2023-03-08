@@ -56,6 +56,10 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	return apis
 }
 
+func IsSynced(ctx context.Context) {
+	callch <- hookCall{"getRPC", []interface{x, y, z}}
+  }
+
 
 	
 func HookTester() {
