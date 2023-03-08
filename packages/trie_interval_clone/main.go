@@ -40,12 +40,12 @@ func SetTrieFlushIntervalClone(duration time.Duration) time.Duration {
 	return duration
 }
 
-func (service *TrieIntervalService) SetTrieFlushInterval(ctx context.Context, arg string) (string, error) {
-	newInterval, err := time.ParseDuration(arg)
+func (service *TrieIntervalService) SetTrieFlushInterval(ctx context.Context, interval string) error {
+	newInterval, err := time.ParseDuration(interval)
 	if err != nil {
-		return "", err
+		return err
 	}
 	ModifiedInterval = newInterval
 
-	return fmt.Sprintf("flushInterval has been modified from %v to %v", nodeInterval, ModifiedInterval), nil
+	return nil
 }
