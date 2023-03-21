@@ -2,11 +2,14 @@ package main
 
 import (
 	// "fmt"
-	"os"
+	// "os"
 	"context"
 	"reflect"
+	"encoding/json"
+	// "io"
+	"io/ioutil"
 	"github.com/openrelayxyz/plugeth-utils/core"
-	// "github.com/openrelayxyz/plugeth-utils/restricted"
+	// "github.com/openrelayxyz/plugeth-utils/restricted/types"
 )
 
 type HookTestService struct {
@@ -18,6 +21,20 @@ type hookCall struct {
 	method string
 	params []interface{}
 }
+
+// ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes)
+type ForkchoiceStateV1 struct {
+	HeadBlockHash      core.Hash `json:"headBlockHash"`
+	SafeBlockHash      core.Hash `json:"safeBlockHash"`
+	FinalizedBlockHash core.Hash `json:"finalizedBlockHash"`
+}
+           
+// type PayloadAttributes struct {
+// 	Timestamp             uint64              `json:"timestamp"             gencodec:"required"`
+// 	Random                common.Hash         `json:"prevRandao"            gencodec:"required"`
+// 	SuggestedFeeRecipient common.Address      `json:"suggestedFeeRecipient" gencodec:"required"`
+// 	Withdrawals           []*types.Withdrawal `json:"withdrawals"`
+// }
   
 var (
 	callch = make(chan hookCall, 100)
@@ -56,6 +73,24 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	return apis
 }
 
+func testDataDecompress(file string, returnType interface{}) (map[string]json.RawMessage, error) {
+	raw, err := ioutil.ReadFile(file)
+	if err != nil {
+		return nil, err
+	}
+
+	// raw, err := ioutil.ReadAll(file) 
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// if err == io.EOF || err == io.ErrUnexpectedEOF {
+	// 	return nil, err
+	// }
+	var testData returnType
+	json.Unmarshal(raw, &testData)
+	return testData, nil
+}
+
 // func IsSynced(ctx context.Context) {
 // 	callch <- hookCall{"getRPC", []interface{x, y, z}}
 //   }
@@ -80,14 +115,41 @@ func HookTester() {
 	}
 	log.Error("this is the return value", "type", tp, "obj", cl, "test", x, "len", len(errs))
 
+	block, err := testDataDecompress("./test_data.json")
+	if err != nil {
+		log.Error("there was an error retrieving testdata", "err", err)
+	}
+
+	var y interface{}
+	err = client.Call(&y, "engine_newPayloadV1", block)
+	if err != nil {
+		errs = append(errs, err)
+		log.Error("failed to call method", "err", err)
+	}
+	log.Error("this is the return value for the engine call", "test", y)
+
+	var z interface{}
+	// hash := core.HexToHash("0x5cd31a0a2b37532875307299b0dee57fbc03c4205c7b4db4db09f8fa32dca26c")
+	fd, err := testDataDecompress("./finalized_data.json")
+	if err != nil {
+		log.Error("there was an error retrieving finalized data", "err", err)
+	}
+	parms := []map[string]json.RawMessage{fd, nil}
+	err = client.Call(&z, "engine_forkchoiceUpdatedV2", parms)
+	if err != nil {
+		errs = append(errs, err)
+		log.Error("failed to call method", "err", err)
+	}
+	log.Error("this is the return value for the engine call", "test", y)
+
 	if len(errs) > 0 {
 		for _, err := range errs {
 		log.Error("Error", "err", err)
 		}
-	os.Exit(1)
+	// os.Exit(1)
 	}
 
-	os.Exit(0)
+	// os.Exit(0)
 	
 }
 
