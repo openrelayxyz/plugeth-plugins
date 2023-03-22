@@ -4,7 +4,7 @@ import (
 	// "fmt"
 	// "os"
 	"context"
-	"reflect"
+	// "reflect"
 	"encoding/json"
 	// "io"
 	"io/ioutil"
@@ -73,8 +73,8 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	return apis
 }
 
-func testDataDecompress(file string, returnType interface{}) (map[string]json.RawMessage, error) {
-	raw, err := ioutil.ReadFile(file)
+func testDataDecompress() (map[string]json.RawMessage, error) {
+	raw, err := ioutil.ReadFile("notes/test_data.json")
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func testDataDecompress(file string, returnType interface{}) (map[string]json.Ra
 	// if err == io.EOF || err == io.ErrUnexpectedEOF {
 	// 	return nil, err
 	// }
-	var testData returnType
+	var testData map[string]json.RawMessage
 	json.Unmarshal(raw, &testData)
 	return testData, nil
 }
@@ -100,22 +100,31 @@ func testDataDecompress(file string, returnType interface{}) (map[string]json.Ra
 func HookTester() {
 	
 	cl := apis[0].Service.(*HookTestService).stack
-	tp := reflect.TypeOf(cl)
+	// tp := reflect.TypeOf(cl)
 	client, err := cl.Attach()
 	if err != nil {
 		errs = append(errs, err)
 		log.Error("Error connecting with client")
 	}
 
+	// var x interface{}
+	// err = client.Call(&x, "plugeth_isSynced")
+	// if err != nil {
+	// 	errs = append(errs, err)
+	// 	log.Error("failed to call method plugeth_isSynced", "err", err)
+	// }
+	// log.Error("this is the return value for isSynced", "test", x, "len", len(errs))
+
 	var x interface{}
-	err = client.Call(&x, "plugeth_isSynced")
+	err = client.Call(&x, "mynamespace_hello")
 	if err != nil {
 		errs = append(errs, err)
-		log.Error("failed to call method", "err", err)
+		log.Error("failed to call method mynamespace_hello", "err", err)
 	}
-	log.Error("this is the return value", "type", tp, "obj", cl, "test", x, "len", len(errs))
+	log.Error("this is the return value for hello", "test", x, "len", len(errs))
 
-	block, err := testDataDecompress("./test_data.json")
+
+	block, err := testDataDecompress()
 	if err != nil {
 		log.Error("there was an error retrieving testdata", "err", err)
 	}
@@ -128,19 +137,19 @@ func HookTester() {
 	}
 	log.Error("this is the return value for the engine call", "test", y)
 
-	var z interface{}
+	// var z interface{}
 	// hash := core.HexToHash("0x5cd31a0a2b37532875307299b0dee57fbc03c4205c7b4db4db09f8fa32dca26c")
-	fd, err := testDataDecompress("./finalized_data.json")
-	if err != nil {
-		log.Error("there was an error retrieving finalized data", "err", err)
-	}
-	parms := []map[string]json.RawMessage{fd, nil}
-	err = client.Call(&z, "engine_forkchoiceUpdatedV2", parms)
-	if err != nil {
-		errs = append(errs, err)
-		log.Error("failed to call method", "err", err)
-	}
-	log.Error("this is the return value for the engine call", "test", y)
+	// fd, err := testDataDecompress(")
+	// if err != nil {
+	// 	log.Error("there was an error retrieving finalized data", "err", err)
+	// }
+	// parms := []map[string]json.RawMessage{fd, nil}
+	// err = client.Call(&z, "engine_forkchoiceUpdatedV2", parms)
+	// if err != nil {
+	// 	errs = append(errs, err)
+	// 	log.Error("failed to call method", "err", err)
+	// }
+	// log.Error("this is the return value for the engine call", "test", y)
 
 	if len(errs) > 0 {
 		for _, err := range errs {
