@@ -137,19 +137,16 @@ func HookTester() {
 	}
 	log.Error("this is the return value for the engine call", "test", y)
 
-	// var z interface{}
-	// hash := core.HexToHash("0x5cd31a0a2b37532875307299b0dee57fbc03c4205c7b4db4db09f8fa32dca26c")
-	// fd, err := testDataDecompress(")
-	// if err != nil {
-	// 	log.Error("there was an error retrieving finalized data", "err", err)
-	// }
-	// parms := []map[string]json.RawMessage{fd, nil}
-	// err = client.Call(&z, "engine_forkchoiceUpdatedV2", parms)
-	// if err != nil {
-	// 	errs = append(errs, err)
-	// 	log.Error("failed to call method", "err", err)
-	// }
-	// log.Error("this is the return value for the engine call", "test", y)
+	var z interface{}
+	hash := core.HexToHash("0x5cd31a0a2b37532875307299b0dee57fbc03c4205c7b4db4db09f8fa32dca26c")
+	
+	parms := []map[string]json.RawMessage{fd, nil}
+	err = client.Call(&z, "engine_forkchoiceUpdatedV2", parms)
+	if err != nil {
+		errs = append(errs, err)
+		log.Error("failed to call method", "err", err)
+	}
+	log.Error("this is the return value for the engine call", "test", y)
 
 	if len(errs) > 0 {
 		for _, err := range errs {

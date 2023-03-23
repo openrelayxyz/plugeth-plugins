@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 	"context"
 	"github.com/openrelayxyz/plugeth-utils/core"
