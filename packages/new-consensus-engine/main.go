@@ -4,9 +4,13 @@ import (
 	"context"
 	"math/big"
 	"errors"
+	"reflect"
+	// "time"
+	// "encoding/json"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
+	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 
 	"github.com/openrelayxyz/plugeth-utils/restricted/consensus"
@@ -125,6 +129,17 @@ type engineService struct {
 	stack core.Node
 }
 
+type TransactionArgs struct {
+	From                 *core.Address `json:"from"`
+	To                   *core.Address `json:"to"`
+	Gas                  *hexutil.Uint64 `json:"gas"`
+	GasPrice             *hexutil.Big    `json:"gasPrice"`
+	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
+	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas"`
+	Value                *hexutil.Big    `json:"value"`
+	Nonce 				 *hexutil.Big    `json:"nonce"`
+}
+
 
 var errs []error
 
@@ -137,25 +152,49 @@ func HookTester() {
 		log.Error("Error connecting with client")
 	}
 
-	var x interface{}
-	err = client.Call(&x, "plugeth_test")
-	if err != nil {
-		errs = append(errs, err)
-		log.Error("failed to call method plugeth_test", "err", err)
-	}
-	log.Error("this is the return value for isSynced", "test", x, "len", len(errs))
-
-	var y interface{}
-	err = client.Call(&y, "eth_coinbase")
+	var coinBase *core.Address
+	err = client.Call(&coinBase, "eth_coinbase")
 	if err != nil {
 		errs = append(errs, err)
 		log.Error("failed to call method eth_coinbase", "err", err)
 	}
-	log.Error("this is the return value for eth_coinbase", "test", y, "len", len(errs))
+	log.Error("this is the return value for eth_coinbase", "test", coinBase, "type", reflect.TypeOf(coinBase), "len", len(errs))
 
+	acctParams := "password"
+	// it is our understanding that the personal namespace will be depricated blah blah
+	var newAccount *core.Address
+	err = client.Call(&newAccount, "personal_newAccount", acctParams)
+	if err != nil {
+		errs = append(errs, err)
+		log.Error("failed to call method personal_newAccount", "err", err)
+	}
+	log.Error("this is the return value for personal_newAccount", "test", newAccount, "type", reflect.TypeOf(newAccount), "len", len(errs))
+
+
+	v := (*hexutil.Big)(big.NewInt(1))
+
+	params := &TransactionArgs{
+		From: coinBase,
+		To: newAccount,
+		Value: v,
+	}
+
+	var z interface{}
+	err = client.Call(&z, "eth_sendTransaction", params)
+	if err != nil {
+		errs = append(errs, err)
+		log.Error("failed to call method eth_sendTransaction", "err", err)
+	}
+	log.Error("this is the return value for eth_sendTransaction", "test", z, "type", reflect.TypeOf(z), "len", len(errs))
+
+
+	log.Error("length of hookchan", "len", len(hookChan))
+
+	x := <- hookChan
+	log.Error("hook chan", "x", x)
 	
 
-// 	if len(errs) > 0 {
+// 	if len(errs) > 0 { this needs to be a channel
 // 		for _, err := range errs {
 // 		log.Error("Error", "err", err)
 // 		}
@@ -171,6 +210,15 @@ func HookTester() {
 
 // the as of now command to start geth is => /geth --dev --http --http.api eth --verbosity=5,  with this plugin loaded 
 
+// this is how to attch to the json shell: ./geth attach /tmp/geth.ipc
+var hookChan chan interface{} = make(chan interface{})
+
+func NewHead(a []byte, b core.Hash, c [][]byte, d *big.Int) {
+	log.Error("NewHead from the inside","a", a, "b", b, "c", c)
+	log.Error("inside custom newhead function")
+	s := "NewHead"
+	hookChan <- s
+}
 
 func (service *engineService) Test(ctx context.Context) string {
 	return "this is a placeholder function"
