@@ -20,7 +20,8 @@ var httpApiFlagName = "http.api"
 
 // cmd/geth/
 
-var hookChan chan interface{} = make(chan interface{})
+// var hookChan chan map[string]func(item interface{}) = make(chan map[string]func(item interface{}))
+var hookChan chan string = make(chan string)
 
 func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
 	pl = loader
@@ -45,25 +46,27 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 			Service:   &engineService{backend, stack},
 			Public:    true,
 		},
-		{
-			Namespace: "plugeth",
-			Version:   "1.0",
-			Service:   &TracerResult{},
-			Public:    true,
-		},
-		{
-			Namespace: "plugeth",
-			Version:   "1.0",
-			Service:   &TracerService{},
-			Public:    true,
-		},
+		// {
+		// 	Namespace: "plugeth",
+		// 	Version:   "1.0",
+		// 	Service:   &TracerResult{},
+		// 	Public:    true,
+		// },
+		// {
+		// 	Namespace: "plugeth",
+		// 	Version:   "1.0",
+		// 	Service:   &TracerService{},
+		// 	Public:    true,
+		// },
 	}
-
 	return apis
 }
 
 func OnShutdown(){
 	name := "OnShutdown"
+	// m := map[string]func(item interface{}){
+	// 	hookMap["OnShutdown"] = func()
+	// }
 	hookChan <- name
 }
 
@@ -72,21 +75,34 @@ func OnShutdown(){
 
 func PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
 	name := "PreProcessBlock"
-	hookChan<- name
+	// name := map[string]func(item interface{}){
+	// 	name:func([]byte, core.Hash, [][]byte, *big.Int)
+	// }
+	hookChan <- name
 }
 
 func PreProcessTransaction(tx core.Hash, block core.Hash, i int) {
 	name := "PreProcessTransaction"
-	hookChan<- name
+	// name := map[string]func(item interface{}){
+	// 	name:func(core.Hash, core.Hash)
+	// }
+	hookChan <- name
 }
 
 func BlockProcessingError(tx core.Hash, block core.Hash, err error) {
 	name := "BlockProcessingError"
-	hookChan<- name
+	// name := map[string]func(item interface{}){
+	// 	name:func(core.Hash, core.Hash, error)
+	// }
+	hookChan <- name
 }
 
 func PostProcessTransaction(tx core.Hash, block core.Hash, i int, receipt []byte) {
 	name := "PostProcessTransaction"
+	// m := map[string]func(item interface{}){
+	// 	name:func(core.Hash, core.Hash, int, []byte)
+	// }
+	// hookChan <- m
 	hookChan<- name
 }
 
@@ -134,24 +150,24 @@ func ModifyAncients(index uint64, freezerUpdate map[string]interface{}) {
 	hookChan<- name
 }
 
-func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
-	name := "AppendAncient"
-	hookChan<- name
-}
+// func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
+// 	name := "AppendAncient"
+// 	hookChan<- name
+// }
 
 // core/state/
 
-func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
-	name := "StateUpdate"
-	hookChan<- name
-}
+// func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
+// 	name := "StateUpdate"
+// 	hookChan<- name
+// }
 
 // core/vm we have code in core/vm but not hooks
 
 // rpc/
 
-func GetRPCCalls(s0 string, s1 string, s2 string) {
-	log.Error("inside custom newhead GetRPCCalls fucntion", "arg0", s0, "arg1", s1, "arg2", s2)
-	name := "GetRPCCalls"
-	hookChan <- name
-}
+// func GetRPCCalls(s0 string, s1 string, s2 string) {
+// 	log.Error("inside custom newhead GetRPCCalls fucntion", "arg0", s0, "arg1", s1, "arg2", s2)
+// 	name := "GetRPCCalls"
+// 	hookChan <- name
+// }

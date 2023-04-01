@@ -13,9 +13,9 @@ import(
 type engine struct {
 }
 
-func CreateEngine(core.Node, []string, bool, restricted.Database) consensus.Engine {
-	return &engine{}
-}
+// func CreateEngine(core.Node, []string, bool, restricted.Database) consensus.Engine {
+// 	return &engine{}
+// }
 
 func (e *engine) Author(header *types.Header) (core.Address, error) {
 	// log.Error("inside of author")
@@ -46,6 +46,7 @@ func (e *engine) VerifyUncles(chain consensus.ChainReader, block *types.Block) e
 }
 func (e *engine) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
 	header.Difficulty = new(big.Int).SetUint64(123456789)
+	header.UncleHash = core.HexToHash("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
 	// log.Error("inside of prepare")
 	return nil
 }
@@ -54,7 +55,7 @@ func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Heade
 }
 func (e *engine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, withdrawals []*types.Withdrawal) (*types.Block, error) {
 	// log.Error("inside of FinalizeAndAssemble")
-			
+	// header.Root = state.IntermediateRoot(true)
 	return types.NewBlockWithHeader(header).WithBody(txs, uncles).WithWithdrawals(withdrawals), nil
 }
 func (e *engine) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
@@ -84,4 +85,8 @@ func (e *engine) APIs(chain consensus.ChainHeaderReader) []core.API {
 func (e *engine) Close() error {
 	//  log.Error("inside of Close")
 	return nil
+}
+
+func CreateEngine(core.Node, []string, bool, restricted.Database) consensus.Engine {
+	return &engine{}
 }
