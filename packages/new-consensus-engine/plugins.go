@@ -5,36 +5,36 @@ import (
 	"math/big"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
-	"github.com/openrelayxyz/plugeth-utils/restricted"
+	// "github.com/openrelayxyz/plugeth-utils/restricted"
 
 )
 
-var (
-	pl      core.PluginLoader
-	backend restricted.Backend
-	log     core.Logger
-	events  core.Feed
-)
+// var (
+// 	pl      core.PluginLoader
+// 	backend restricted.Backend
+// 	log     core.Logger
+// 	events  core.Feed
+// )
 
-var httpApiFlagName = "http.api"
+// var httpApiFlagName = "http.api"
 
 // cmd/geth/
 
 // var hookChan chan map[string]func(item interface{}) = make(chan map[string]func(item interface{}))
 var hookChan chan string = make(chan string)
 
-func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
-	pl = loader
-	events = pl.GetFeed()
-	log = logger
-	v := ctx.String(httpApiFlagName)
-	if v != "" {
-		ctx.Set(httpApiFlagName, v+",plugeth")
-	} else {
-		ctx.Set(httpApiFlagName, "eth,net,web3,plugeth")
-		log.Info("Loaded consensus engine plugin")
-	}
-}
+// func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
+// 	pl = loader
+// 	events = pl.GetFeed()
+// 	log = logger
+// 	v := ctx.String(httpApiFlagName)
+// 	if v != "" {
+// 		ctx.Set(httpApiFlagName, v+",plugeth")
+// 	} else {
+// 		ctx.Set(httpApiFlagName, "eth,net,web3,plugeth")
+// 		log.Info("Loaded consensus engine plugin")
+// 	}
+// }
 
 var apis []core.API
 
