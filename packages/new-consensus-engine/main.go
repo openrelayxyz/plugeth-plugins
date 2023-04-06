@@ -4,6 +4,9 @@ import (
 	"context"
 	"math/big"
 	"time"
+	"os"
+	"time"
+	// "errors"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -26,30 +29,92 @@ type TransactionArgs struct {
 }
 
 
-var errs []error
+var errs chan error = make(chan error)
+// var errs []error
+// var hookChan chan map[string]func(item interface{}) = make(chan map[string]func(item interface{}))
+var hookChan chan string = make(chan string)
 
 func HookTester() {
+
+	log.Error("inside hook tester")
+
+	blockFactory()
+
+	start := time.Now()
+	go func () {
+		for {
+			// if m := <- hookChan {
+				m := <- hookChan
+				log.Error("came in off of hookchan", "m", m)
+				// var val interface{}
+				// var ok bool
+				// f := func(key string) bool {val, ok = m[key]; return ok}
+				// switch {
+				// case f("PreProcessBlock"):
+				// 	if val == func([]byte, core.Hash, [][]byte, *big.Int) {
+				// 		log.Error("pre process")
+				// 	}
+				// case f("PreProcessTransaction"):
+				// 	if val == func(core.Hash, core.Hash) {
+				// 		log.Error("pp txn")
+				// 	}
+				// }
+			}
+		
+	}()
+
+	go func () {
+		var e error
+		for {
+			e := <- errs
+			log.Error("Plugin returned error", "err", e)
+			}
+		if e != nil {
+			os.Exit(1)
+		}
+	}()
+
+// 	if len(errs) > 0 { this needs to be a channel
+// 		for _, err := range errs {
+// 		log.Error("Error", "err", err)
+// 		}
+// 	// os.Exit(1)
+// 	}
+
+	// os.Exit(0)
+	
+}
+
+
+
+// func evaluate() {
+// 	m := <- hookChan
+// 	log.Error("eval func", "name", name)
+// }
+
+func blockFactory() {
+
+	log.Error("inside block factory")
 
 	cl := apis[0].Service.(*engineService).stack
 	client, err := cl.Attach()
 	if err != nil {
-		errs = append(errs, err)
+		errs <- err
 		log.Error("Error connecting with client")
 	}
 
 	var coinBase *core.Address
 	err = client.Call(&coinBase, "eth_coinbase")
 	if err != nil {
-		errs = append(errs, err)
+		errs <- err
 		log.Error("failed to call method eth_coinbase", "err", err)
 	}
-	// log.Error("this is the return value for eth_coinbase", "test", coinBase, "type", reflect.TypeOf(coinBase), "len", len(errs))
 
 	var peerCount hexutil.Uint64
 	for peerCount == 0 {
 		err = client.Call(&peerCount, "net_peerCount")
 		if err != nil {
-			errs = append(errs, err)
+			errs <- err
 			log.Error("failed to call method eth_coinbase", "err", err)
 		}
 		time.Sleep(100 * time.Millisecond)
@@ -68,43 +133,13 @@ func HookTester() {
 	var t0 interface{}
 	err = client.Call(&t0, "eth_sendTransaction", tx0_params)
 	if err != nil {
-		errs = append(errs, err)
+		errs <- err
 		log.Error("failed to call method eth_sendTransaction", "err", err)
 	}
 	log.Error("this is the return value for eth_sendTransaction zero", "tx0", t0)
-
-	// go evaluate()
-
-	go func () {
-		for {
-			x := <- hookChan
-			log.Error("channel returns", "x", x)
-		}
-	}()
-
-// 	if len(errs) > 0 { this needs to be a channel
-// 		for _, err := range errs {
-// 		log.Error("Error", "err", err)
-// 		}
-// 	// os.Exit(1)
-// 	}
-
-	// os.Exit(0)
-	
 }
 
-// func evaluate() {
-// 	m := <- hookChan
-// 	log.Error("eval func", "name", name)
-// }
-
-
-// what should be done next is set up a json object to pass into eth_sendTransactions so we can append one block to the chain from there we can start to 
-// experiment on what can be done to excerise the hooks
-
-// the as of now command to start geth is => /geth --dev --http --http.api eth --verbosity=5,  with this plugin loaded 
-
-// this is how to attch to the json shell: ./geth attach /tmp/geth.ipc
+// this is how to attach to the json shell: ./geth attach /tmp/geth.ipc
 
 
 func (service *engineService) Test(ctx context.Context) string {

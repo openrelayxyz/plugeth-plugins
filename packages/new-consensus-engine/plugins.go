@@ -5,36 +5,10 @@ import (
 	"math/big"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
-	// "github.com/openrelayxyz/plugeth-utils/restricted"
 
 )
 
-// var (
-// 	pl      core.PluginLoader
-// 	backend restricted.Backend
-// 	log     core.Logger
-// 	events  core.Feed
-// )
-
-// var httpApiFlagName = "http.api"
-
 // cmd/geth/
-
-// var hookChan chan map[string]func(item interface{}) = make(chan map[string]func(item interface{}))
-var hookChan chan string = make(chan string)
-
-// func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
-// 	pl = loader
-// 	events = pl.GetFeed()
-// 	log = logger
-// 	v := ctx.String(httpApiFlagName)
-// 	if v != "" {
-// 		ctx.Set(httpApiFlagName, v+",plugeth")
-// 	} else {
-// 		ctx.Set(httpApiFlagName, "eth,net,web3,plugeth")
-// 		log.Info("Loaded consensus engine plugin")
-// 	}
-// }
 
 var apis []core.API
 
@@ -59,6 +33,11 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 		// 	Public:    true,
 		// },
 	}
+	// name := "GetAPIs"
+	// m := map[string]interface{}{
+	// 	name:func(stack core.Node, backend core.Backend) []core.API {}
+	// }
+	// hookChan <- name
 	return apis
 }
 
@@ -75,7 +54,7 @@ func OnShutdown(){
 
 func PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
 	name := "PreProcessBlock"
-	// name := map[string]func(item interface{}){
+	// m := map[string]func(item interface{}){
 	// 	name:func([]byte, core.Hash, [][]byte, *big.Int)
 	// }
 	hookChan <- name
@@ -83,7 +62,7 @@ func PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
 
 func PreProcessTransaction(tx core.Hash, block core.Hash, i int) {
 	name := "PreProcessTransaction"
-	// name := map[string]func(item interface{}){
+	// m := map[string]func(item interface{}){
 	// 	name:func(core.Hash, core.Hash)
 	// }
 	hookChan <- name
@@ -112,24 +91,24 @@ func PostProcessBlock(block core.Hash) {
 }
 
 func NewHead(block []byte, hash core.Hash, logs [][]byte, td *big.Int) {
-	log.Error("inside custom newhead function")
+	// log.Error("inside custom newhead function")
 	name := "NewHead"
 	hookChan <- name
 }
 
 func NewSideBlock(block []byte, hash core.Hash, logs [][]byte) {
-	name := "NewSideBlock"
-	hookChan <- name
+	// name := "NewSideBlock"
+	// hookChan <- name
 }
 
 func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) {
-	name := "Reord"
-	hookChan <- name
+	// name := "Reorg"
+	// hookChan <- name
 }
 
 func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
-	name := "SetTrieFlushIntervalClone"
-	hookChan<- name
+	// name := "SetTrieFlushIntervalClone"
+	// hookChan<- name
 	return t
 }
 
@@ -146,8 +125,8 @@ func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
 // core/rawdb/
 
 func ModifyAncients(index uint64, freezerUpdate map[string]interface{}) {
-	name := "ModifyAncients"
-	hookChan<- name
+	// name := "ModifyAncients"
+	// hookChan<- name
 }
 
 // func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
