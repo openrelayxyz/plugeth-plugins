@@ -42,11 +42,11 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 }
 
 func OnShutdown(){
-	name := "OnShutdown"
-	// m := map[string]func(item interface{}){
-	// 	hookMap["OnShutdown"] = func()
+	// name := "OnShutdown"
+	// m := map[string]interface{}{
+	// 	name: func(),
 	// }
-	hookChan <- name
+	// hookChan <- m
 }
 
 // core/
@@ -54,46 +54,49 @@ func OnShutdown(){
 
 func PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
 	name := "PreProcessBlock"
-	// m := map[string]func(item interface{}){
-	// 	name:func([]byte, core.Hash, [][]byte, *big.Int)
-	// }
-	hookChan <- name
+	m := map[string]interface{}{
+		name:PreProcessBlock,
+	}
+	hookChan <- m
 }
 
 func PreProcessTransaction(tx core.Hash, block core.Hash, i int) {
-	name := "PreProcessTransaction"
+	// name := "PreProcessTransaction"
 	// m := map[string]func(item interface{}){
-	// 	name:func(core.Hash, core.Hash)
+	// 	name:func(core.Hash, core.Hash),
 	// }
-	hookChan <- name
+	// hookChan <- m
 }
 
 func BlockProcessingError(tx core.Hash, block core.Hash, err error) {
-	name := "BlockProcessingError"
+	// name := "BlockProcessingError"
 	// name := map[string]func(item interface{}){
 	// 	name:func(core.Hash, core.Hash, error)
 	// }
-	hookChan <- name
+	// hookChan <- name
 }
 
 func PostProcessTransaction(tx core.Hash, block core.Hash, i int, receipt []byte) {
-	name := "PostProcessTransaction"
+	// name := "PostProcessTransaction"
 	// m := map[string]func(item interface{}){
-	// 	name:func(core.Hash, core.Hash, int, []byte)
+	// 	name:func(core.Hash, core.Hash, int, []byte),
 	// }
 	// hookChan <- m
-	hookChan<- name
+	// hookChan<- name
 }
 
 func PostProcessBlock(block core.Hash) {
-	name := "PostProcessBlock"
-	hookChan<- name
+	// name := "PostProcessBlock"
+	// hookChan<- name
 }
 
 func NewHead(block []byte, hash core.Hash, logs [][]byte, td *big.Int) {
 	// log.Error("inside custom newhead function")
-	name := "NewHead"
-	hookChan <- name
+	// name := "NewHead"
+	// m := map[string]interface{}{
+	// 	name:func([]byte, core.Hash, [][]byte, *big.Int),
+	// }
+	// hookChan <- name
 }
 
 func NewSideBlock(block []byte, hash core.Hash, logs [][]byte) {
@@ -150,3 +153,7 @@ func ModifyAncients(index uint64, freezerUpdate map[string]interface{}) {
 // 	name := "GetRPCCalls"
 // 	hookChan <- name
 // }
+
+var plugins map[string]interface{} = map[string]interface{}{
+	"PreProcessBlock": PreProcessBlock,
+} 

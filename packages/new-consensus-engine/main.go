@@ -4,9 +4,8 @@ import (
 	"context"
 	"math/big"
 	"time"
-	"os"
-	"time"
-	// "errors"
+	// "os"
+	"errors"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -31,8 +30,8 @@ type TransactionArgs struct {
 
 var errs chan error = make(chan error)
 // var errs []error
-// var hookChan chan map[string]func(item interface{}) = make(chan map[string]func(item interface{}))
-var hookChan chan string = make(chan string)
+var hookChan chan map[string]interface{} = make(chan map[string]interface{})
+// var hookChan chan string = make(chan string)
 
 func HookTester() {
 
@@ -40,57 +39,45 @@ func HookTester() {
 
 	blockFactory()
 
-	start := time.Now()
+	// start := time.Now()
 	go func () {
 		for {
-			// if m := <- hookChan {
-				m := <- hookChan
-				log.Error("came in off of hookchan", "m", m)
-				// var val interface{}
-				// var ok bool
-				// f := func(key string) bool {val, ok = m[key]; return ok}
-				// switch {
-				// case f("PreProcessBlock"):
-				// 	if val == func([]byte, core.Hash, [][]byte, *big.Int) {
-				// 		log.Error("pre process")
-				// 	}
-				// case f("PreProcessTransaction"):
-				// 	if val == func(core.Hash, core.Hash) {
-				// 		log.Error("pp txn")
-				// 	}
-				// }
+			m := <- hookChan
+			log.Error("came in off of hookchan", "m", m)
+			var val interface{}
+			var ok bool
+			f := func(key string) bool {val, ok = m[key]; return ok}
+			switch {
+				case f("PreProcessBlock"):
+					switch val.(type) {
+					case func(core.Hash, uint64, []byte):
+						delete(plugins, "PreProcessBlock")
+						log.Error("deleted that mug")
+					default:
+						err := errors.New("PreProcessBlock does not match expected signature")
+						errs <- err
+					}
 			}
-		
-	}()
-
-	go func () {
-		var e error
-		for {
-			e := <- errs
-			log.Error("Plugin returned error", "err", e)
-			}
-		if e != nil {
-			os.Exit(1)
 		}
 	}()
 
-// 	if len(errs) > 0 { this needs to be a channel
-// 		for _, err := range errs {
-// 		log.Error("Error", "err", err)
-// 		}
-// 	// os.Exit(1)
-// 	}
+	// t1 := time.NewTimer(2 * time.Second)
+	// go func () {
+	// 	var e error
+	// 	for {
+	// 		e = <- errs
+	// 		log.Error("Plugin returned error", "err", e)
+	// 		if e != nil {
+	// 			os.Exit(1)
+	// 		}
+	// 		<-t1.C
+	// 		log.Error("looks like we made it")
+	// 		os.Exit(0)
+	// 		}
+	// }()
 
-	// os.Exit(0)
-	
 }
 
-
-
-// func evaluate() {
-// 	m := <- hookChan
-// 	log.Error("eval func", "name", name)
-// }
 
 func blockFactory() {
 
