@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"time"
 	// "os"
-	"errors"
+	// "errors"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -16,17 +16,6 @@ type engineService struct {
 	stack core.Node
 }
 
-type TransactionArgs struct {
-	From                 *core.Address `json:"from"`
-	To                   *core.Address `json:"to"`
-	Gas                  *hexutil.Uint64 `json:"gas"`
-	GasPrice             *hexutil.Big    `json:"gasPrice"`
-	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
-	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas"`
-	Value                *hexutil.Big    `json:"value"`
-	Nonce 				 *hexutil.Big    `json:"nonce"`
-}
-
 
 var errs chan error = make(chan error)
 // var errs []error
@@ -35,13 +24,16 @@ var hookChan chan map[string]interface{} = make(chan map[string]interface{})
 
 func HookTester() {
 
-	log.Error("inside hook tester")
+	log.Error("inside of hook tester 1")
 
 	blockFactory()
 
 	// start := time.Now()
+	time.Sleep(1 *time.Second)
+	log.Error("inside of hook tester 2 post sleep")
 	go func () {
 		for {
+			log.Error("inside of hook tester 3 inside of loop")
 			m := <- hookChan
 			log.Error("came in off of hookchan", "m", m)
 			var val interface{}
@@ -49,17 +41,59 @@ func HookTester() {
 			f := func(key string) bool {val, ok = m[key]; return ok}
 			switch {
 				case f("PreProcessBlock"):
+					log.Error("preBlock plugin map", "plugins", plugins)
 					switch val.(type) {
 					case func(core.Hash, uint64, []byte):
 						delete(plugins, "PreProcessBlock")
 						log.Error("deleted that mug")
-					default:
-						err := errors.New("PreProcessBlock does not match expected signature")
-						errs <- err
+						log.Error("post delete", "plugins", plugins)
 					}
+				case f("PreProcessTransaction"):
+					log.Error("preTx plugin map", "plugins", plugins)
+					switch val.(type) {
+					case func([]byte, core.Hash, core.Hash, int):
+						delete(plugins, "PreProcessTransaction")
+						log.Error("deleted that mug 2")
+						log.Error("post delete", "plugins", plugins)
+					}
+				case f("PostProcessTransaction"):
+					log.Error("postTx plugin map", "plugins", plugins)
+					switch val.(type) {
+					case func(core.Hash, core.Hash, int, []byte):
+						delete(plugins, "PostProcessTransaction")
+						log.Error("deleted that mug 3")
+						log.Error("post delete", "plugins", plugins)
+					}
+				case f("PostProcessBlock"):
+					log.Error("postBk plugin map", "plugins", plugins)
+					switch val.(type) {
+					case func(core.Hash):
+						delete(plugins, "PostProcessBlock")
+						log.Error("deleted that mug 4")
+						log.Error("post delete", "plugins", plugins)
+					}
+				case f("NewHead"):
+					log.Error("newHead plugin map", "plugins", plugins)
+					switch val.(type) {
+					case func([]byte, core.Hash, [][]byte, *big.Int):
+						delete(plugins, "NewHead")
+						log.Error("deleted that mug 5")
+						log.Error("post delete", "plugins", plugins)
+					}
+				case f("GetPRCCalls"):
+					log.Error("postBk plugin map", "plugins", plugins)
+					switch val.(type) {
+					case func(core.Hash):
+						delete(plugins, "GetRPCCalls")
+						log.Error("deleted that mug 6")
+						log.Error("post delete", "plugins", plugins)
+					}
+				}
+			
 			}
-		}
 	}()
+
+	log.Error("Post loop map", "plugins", plugins)
 
 	// t1 := time.NewTimer(2 * time.Second)
 	// go func () {
@@ -78,10 +112,18 @@ func HookTester() {
 
 }
 
+type TransactionArgs struct {
+	From                 *core.Address `json:"from"`
+	To                   *core.Address `json:"to"`
+	Gas                  *hexutil.Uint64 `json:"gas"`
+	GasPrice             *hexutil.Big    `json:"gasPrice"`
+	MaxFeePerGas         *hexutil.Big    `json:"maxFeePerGas"`
+	MaxPriorityFeePerGas *hexutil.Big    `json:"maxPriorityFeePerGas"`
+	Value                *hexutil.Big    `json:"value"`
+	Nonce 				 *hexutil.Big    `json:"nonce"`
+}
 
 func blockFactory() {
-
-	log.Error("inside block factory")
 
 	cl := apis[0].Service.(*engineService).stack
 	client, err := cl.Attach()

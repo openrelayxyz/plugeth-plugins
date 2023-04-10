@@ -60,12 +60,12 @@ func PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
 	hookChan <- m
 }
 
-func PreProcessTransaction(tx core.Hash, block core.Hash, i int) {
-	// name := "PreProcessTransaction"
-	// m := map[string]func(item interface{}){
-	// 	name:func(core.Hash, core.Hash),
-	// }
-	// hookChan <- m
+func PreProcessTransaction(txBytes []byte, txHash, blockHash core.Hash, i int) {
+	name := "PreProcessTransaction"
+	m := map[string]interface{}{
+		name:PreProcessTransaction,
+	}
+	hookChan <- m
 }
 
 func BlockProcessingError(tx core.Hash, block core.Hash, err error) {
@@ -77,26 +77,27 @@ func BlockProcessingError(tx core.Hash, block core.Hash, err error) {
 }
 
 func PostProcessTransaction(tx core.Hash, block core.Hash, i int, receipt []byte) {
-	// name := "PostProcessTransaction"
-	// m := map[string]func(item interface{}){
-	// 	name:func(core.Hash, core.Hash, int, []byte),
-	// }
-	// hookChan <- m
-	// hookChan<- name
+	name := "PostProcessTransaction"
+	m := map[string]interface{}{
+		name:PostProcessTransaction,
+	}
+	hookChan <- m
 }
 
 func PostProcessBlock(block core.Hash) {
-	// name := "PostProcessBlock"
-	// hookChan<- name
+	name := "PostProcessBlock"
+	m := map[string]interface{}{
+		name:PostProcessBlock,
+	}
+	hookChan <- m
 }
 
 func NewHead(block []byte, hash core.Hash, logs [][]byte, td *big.Int) {
-	// log.Error("inside custom newhead function")
-	// name := "NewHead"
-	// m := map[string]interface{}{
-	// 	name:func([]byte, core.Hash, [][]byte, *big.Int),
-	// }
-	// hookChan <- name
+	name := "NewHead"
+	m := map[string]interface{}{
+		name:NewHead,
+	}
+	hookChan <- m
 }
 
 func NewSideBlock(block []byte, hash core.Hash, logs [][]byte) {
@@ -148,12 +149,19 @@ func ModifyAncients(index uint64, freezerUpdate map[string]interface{}) {
 
 // rpc/
 
-// func GetRPCCalls(s0 string, s1 string, s2 string) {
-// 	log.Error("inside custom newhead GetRPCCalls fucntion", "arg0", s0, "arg1", s1, "arg2", s2)
-// 	name := "GetRPCCalls"
-// 	hookChan <- name
-// }
+func GetRPCCalls(method string, id string, params string) {
+	// name := "GetRPCCalls"
+	// m := map[string]interface{}{
+	// 	name:GetRPCCalls,
+	// }
+	// hookChan <- m
+}
 
 var plugins map[string]interface{} = map[string]interface{}{
 	"PreProcessBlock": PreProcessBlock,
+	"PreProcessTransaction": PreProcessTransaction,
+	"PostProcessTransaction": PostProcessTransaction,
+	"PostProcessBlock": PostProcessBlock,
+	"NewHead": NewHead,
+	"GetRPCCalls": GetRPCCalls,
 } 
