@@ -4,8 +4,7 @@ import (
 	"context"
 	"math/big"
 	"time"
-	// "os"
-	// "errors"
+	"os"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -18,98 +17,47 @@ type engineService struct {
 
 
 var errs chan error = make(chan error)
-// var errs []error
-var hookChan chan map[string]interface{} = make(chan map[string]interface{})
-// var hookChan chan string = make(chan string)
+var hookChan chan map[string]struct{} = make(chan map[string]struct{})
 
 func HookTester() {
 
-	log.Error("inside of hook tester 1")
-
 	blockFactory()
 
-	// start := time.Now()
-	time.Sleep(1 *time.Second)
-	log.Error("inside of hook tester 2 post sleep")
+	log.Error("Pre loop map", "plugins", plugins)
+
 	go func () {
 		for {
-			log.Error("inside of hook tester 3 inside of loop")
-			m := <- hookChan
-			log.Error("came in off of hookchan", "m", m)
-			var val interface{}
-			var ok bool
-			f := func(key string) bool {val, ok = m[key]; return ok}
-			switch {
-				case f("PreProcessBlock"):
-					log.Error("preBlock plugin map", "plugins", plugins)
-					switch val.(type) {
-					case func(core.Hash, uint64, []byte):
-						delete(plugins, "PreProcessBlock")
-						log.Error("deleted that mug")
-						log.Error("post delete", "plugins", plugins)
+			select {
+				case <- time.NewTimer(5 * time.Second).C:
+					if len(plugins) > 0 {
+						log.Error("told you so", "len", len(plugins))
+						os.Exit(1)
+					} else {
+						log.Error("Exit without error", "len", len(plugins))
+						os.Exit(0)
 					}
-				case f("PreProcessTransaction"):
-					log.Error("preTx plugin map", "plugins", plugins)
-					switch val.(type) {
-					case func([]byte, core.Hash, core.Hash, int):
-						delete(plugins, "PreProcessTransaction")
-						log.Error("deleted that mug 2")
-						log.Error("post delete", "plugins", plugins)
-					}
-				case f("PostProcessTransaction"):
-					log.Error("postTx plugin map", "plugins", plugins)
-					switch val.(type) {
-					case func(core.Hash, core.Hash, int, []byte):
-						delete(plugins, "PostProcessTransaction")
-						log.Error("deleted that mug 3")
-						log.Error("post delete", "plugins", plugins)
-					}
-				case f("PostProcessBlock"):
-					log.Error("postBk plugin map", "plugins", plugins)
-					switch val.(type) {
-					case func(core.Hash):
-						delete(plugins, "PostProcessBlock")
-						log.Error("deleted that mug 4")
-						log.Error("post delete", "plugins", plugins)
-					}
-				case f("NewHead"):
-					log.Error("newHead plugin map", "plugins", plugins)
-					switch val.(type) {
-					case func([]byte, core.Hash, [][]byte, *big.Int):
-						delete(plugins, "NewHead")
-						log.Error("deleted that mug 5")
-						log.Error("post delete", "plugins", plugins)
-					}
-				case f("GetPRCCalls"):
-					log.Error("postBk plugin map", "plugins", plugins)
-					switch val.(type) {
-					case func(core.Hash):
-						delete(plugins, "GetRPCCalls")
-						log.Error("deleted that mug 6")
-						log.Error("post delete", "plugins", plugins)
-					}
+				case m := <- hookChan:
+					var ok bool
+					f := func(key string) bool {_, ok = m[key]; return ok}
+					switch {
+						case f("PreProcessBlock"):
+							delete(plugins, "PreProcessBlock")
+						case f("PreProcessTransaction"):
+							delete(plugins, "PreProcessTransaction")
+						case f("PostProcessTransaction"):
+							delete(plugins, "PostProcessTransaction")
+						case f("PostProcessBlock"):
+							delete(plugins, "PostProcessBlock")
+						case f("NewHead"):
+							delete(plugins, "NewHead")
+						case f("GetRPCCalls"):
+							delete(plugins, "GetRPCCalls")
+						case f("SetTrieFlushIntervalClone"):
+							delete(plugins, "SetTrieFlushIntervalClone")
 				}
-			
 			}
+		}
 	}()
-
-	log.Error("Post loop map", "plugins", plugins)
-
-	// t1 := time.NewTimer(2 * time.Second)
-	// go func () {
-	// 	var e error
-	// 	for {
-	// 		e = <- errs
-	// 		log.Error("Plugin returned error", "err", e)
-	// 		if e != nil {
-	// 			os.Exit(1)
-	// 		}
-	// 		<-t1.C
-	// 		log.Error("looks like we made it")
-	// 		os.Exit(0)
-	// 		}
-	// }()
-
 }
 
 type TransactionArgs struct {
@@ -167,8 +115,6 @@ func blockFactory() {
 	}
 	log.Error("this is the return value for eth_sendTransaction zero", "tx0", t0)
 }
-
-// this is how to attach to the json shell: ./geth attach /tmp/geth.ipc
 
 
 func (service *engineService) Test(ctx context.Context) string {

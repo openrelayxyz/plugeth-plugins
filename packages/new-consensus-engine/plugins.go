@@ -3,9 +3,9 @@ package main
 import (
 	"time"
 	"math/big"
-
+	
 	"github.com/openrelayxyz/plugeth-utils/core"
-
+	
 )
 
 // cmd/geth/
@@ -35,9 +35,9 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	}
 	// name := "GetAPIs"
 	// m := map[string]interface{}{
-	// 	name:func(stack core.Node, backend core.Backend) []core.API {}
+	// 	name:GetAPIs,
 	// }
-	// hookChan <- name
+	// hookChan <- m
 	return apis
 }
 
@@ -54,23 +54,23 @@ func OnShutdown(){
 
 func PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
 	name := "PreProcessBlock"
-	m := map[string]interface{}{
-		name:PreProcessBlock,
+	m := map[string]struct{}{
+		name:struct{}{},
 	}
 	hookChan <- m
 }
 
 func PreProcessTransaction(txBytes []byte, txHash, blockHash core.Hash, i int) {
 	name := "PreProcessTransaction"
-	m := map[string]interface{}{
-		name:PreProcessTransaction,
+	m := map[string]struct{}{
+		name:struct{}{},
 	}
 	hookChan <- m
 }
 
 func BlockProcessingError(tx core.Hash, block core.Hash, err error) {
 	// name := "BlockProcessingError"
-	// name := map[string]func(item interface{}){
+	// name := map[string]func(item struct{}){
 	// 	name:func(core.Hash, core.Hash, error)
 	// }
 	// hookChan <- name
@@ -78,24 +78,24 @@ func BlockProcessingError(tx core.Hash, block core.Hash, err error) {
 
 func PostProcessTransaction(tx core.Hash, block core.Hash, i int, receipt []byte) {
 	name := "PostProcessTransaction"
-	m := map[string]interface{}{
-		name:PostProcessTransaction,
+	m := map[string]struct{}{
+		name:struct{}{},
 	}
 	hookChan <- m
 }
 
 func PostProcessBlock(block core.Hash) {
 	name := "PostProcessBlock"
-	m := map[string]interface{}{
-		name:PostProcessBlock,
+	m := map[string]struct{}{
+		name:struct{}{},
 	}
 	hookChan <- m
 }
 
 func NewHead(block []byte, hash core.Hash, logs [][]byte, td *big.Int) {
 	name := "NewHead"
-	m := map[string]interface{}{
-		name:NewHead,
+	m := map[string]struct{}{
+		name:struct{}{},
 	}
 	hookChan <- m
 }
@@ -112,7 +112,10 @@ func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) {
 
 func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
 	// name := "SetTrieFlushIntervalClone"
-	// hookChan<- name
+	// m := map[string]struct{}{
+	// 	name:SetTrieFlushIntervalClone,
+	// }
+	// hookChan <- m
 	return t
 }
 
@@ -128,7 +131,7 @@ func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
 
 // core/rawdb/
 
-func ModifyAncients(index uint64, freezerUpdate map[string]interface{}) {
+func ModifyAncients(index uint64, freezerUpdate map[string]struct{}) {
 	// name := "ModifyAncients"
 	// hookChan<- name
 }
@@ -151,17 +154,27 @@ func ModifyAncients(index uint64, freezerUpdate map[string]interface{}) {
 
 func GetRPCCalls(method string, id string, params string) {
 	// name := "GetRPCCalls"
-	// m := map[string]interface{}{
+	// m := map[string]struct{}{
 	// 	name:GetRPCCalls,
 	// }
 	// hookChan <- m
 }
 
-var plugins map[string]interface{} = map[string]interface{}{
-	"PreProcessBlock": PreProcessBlock,
-	"PreProcessTransaction": PreProcessTransaction,
-	"PostProcessTransaction": PostProcessTransaction,
-	"PostProcessBlock": PostProcessBlock,
-	"NewHead": NewHead,
-	"GetRPCCalls": GetRPCCalls,
+
+var plugins map[string]struct{} = map[string]struct{}{
+	"PreProcessBlock": struct{}{},
+	"PreProcessTransaction": struct{}{},
+	"PostProcessTransaction": struct{}{},
+	"PostProcessBlock": struct{}{},
+	"NewHead": struct{}{},
 } 
+
+// var plugins map[string]interface{} = map[string]interface{}{
+// 	"PreProcessBlock": PreProcessBlock,
+// 	"PreProcessTransaction": PreProcessTransaction,
+// 	"PostProcessTransaction": PostProcessTransaction,
+// 	"PostProcessBlock": PostProcessBlock,
+// 	"NewHead": NewHead,
+// 	// "GetRPCCalls": GetRPCCalls,
+// 	// "SetTrieFlushIntervalClone": SetTrieFlushIntervalClone,
+// } 

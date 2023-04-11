@@ -12,6 +12,4 @@ echo -n "supersecretpassword" > passwordfile
 
 $GETH init --datadir=./00 genesis.json
 
-$GETH --config config00.toml --authrpc.port 8552 --port 64480 --verbosity 5 --nodiscover --networkid=6448 --datadir=./00/ --mine --miner.etherbase f2c207111cb6ef761e439e56b25c7c99ac026a01 --unlock f2c207111cb6ef761e439e56b25c7c99ac026a01 --http --http.api eth,debug,net --http.port 9545 --password passwordfile --allow-insecure-unlock & 
-
-wait
+$GETH --config config00.toml --authrpc.port 8552 --port 64480 --verbosity 5 --nodiscover --networkid=6448 --datadir=./00/ --mine --miner.etherbase f2c207111cb6ef761e439e56b25c7c99ac026a01 --unlock f2c207111cb6ef761e439e56b25c7c99ac026a01 --http --http.api eth,debug,net --http.port 9545 --password passwordfile --allow-insecure-unlock
