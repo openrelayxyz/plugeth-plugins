@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 	"time"
-	// "os"
+	"os"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -34,19 +34,21 @@ func HookTester() {
 	go func () {
 		for {
 			select {
-				// case <- time.NewTimer(5 * time.Second).C:
-				// 	if len(plugins) > 0 {
-				// 		log.Error("Exit with Error, Plugins map not empty", "Plugins not called", plugins)
-				// 		os.Exit(1)
-				// 	} else {
-				// 		log.Error("Exit without error", "len", len(plugins))
-				// 		os.Exit(0)
-				// 	}
+				case <- time.NewTimer(5 * time.Second).C:
+					if len(plugins) > 0 {
+						log.Error("Exit with Error, Plugins map not empty", "Plugins not called", plugins)
+						os.Exit(1)
+					} else {
+						log.Error("Exit without error", "len", len(plugins))
+						os.Exit(0)
+					}
 				case m := <- hookChan:
 					log.Error("this came in off of the hookChan", "m", m)
 					var ok bool
 					f := func(key string) bool {_, ok = m[key]; return ok}
 					switch {
+						case f("StateUpdate"):
+							delete(plugins, "StateUpdate")
 						case f("PreProcessBlock"):
 							delete(plugins, "PreProcessBlock")
 						case f("PreProcessTransaction"):
@@ -61,6 +63,12 @@ func HookTester() {
 							delete(plugins, "GetRPCCalls")
 						case f("SetTrieFlushIntervalClone"):
 							delete(plugins, "SetTrieFlushIntervalClone")
+						case f("CaptureStart"):
+							delete(plugins, "CaptureStart")
+						case f("CaptureEnd"):
+							delete(plugins, "CaptureEnd")
+						case f("Result"):
+							delete(plugins, "Result")
 				}
 			}
 		}
@@ -116,7 +124,6 @@ func blockFactory() {
 		Value: v,
 	}
 
-	// var t0 core.Hash
 	err = client.Call(&t0, "eth_sendTransaction", tx0_params)
 	if err != nil {
 		errs <- err
@@ -124,11 +131,10 @@ func blockFactory() {
 	}
 	log.Error("this is the return value for eth_sendTransaction zero", "tx0", t0)
 
-	// time.Sleep(2 * time.Second)
-	// var val interface{}
-	// err = client.Call(&val, "debug_traceTransaction", t0)
-	// log.Error("tracer result", "val", val, "err", err)
+}
 
+type TraceConfig struct {
+	Tracer  *string
 }
 
 func txTracer() {
@@ -147,12 +153,12 @@ func txTracer() {
 	// err = client.Call(&bn, "eth_getBlockByNumber", "latest", false)
 	// log.Error("by number result", "val", bh, "err", err)
 
-	var tracer *string
-	tr := "testTracer"
-	tracer = &tr
+	// var tracer *string
+	// tracer = tr 
 	time.Sleep(2 * time.Second)
-	t := &tracerTypeParams{
-		tracer: tracer,
+	tr := "testTracer"
+	t := TraceConfig{
+		Tracer: &tr,
 	}
 
 	var trResult interface{}

@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "time"
+	"time"
 	"math/big"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
@@ -20,22 +20,9 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 			Service:   &engineService{backend, stack},
 			Public:    true,
 		},
-		// {
-		// 	Namespace: "plugeth",
-		// 	Version:   "1.0",
-		// 	Service:   &TracerResult{},
-		// 	Public:    true,
-		// },
-		// {
-		// 	Namespace: "plugeth",
-		// 	Version:   "1.0",
-		// 	Service:   &TracerService{},
-		// 	Public:    true,
-		// },
 	}
-	// name := "GetAPIs"
-	// m := map[string]interface{}{
-	// 	name:GetAPIs,
+	// m := map[string]struct{}{
+	// 	"GetAPIs":struct{}{},
 	// }
 	// hookChan <- m
 	return apis
@@ -110,14 +97,14 @@ func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) {
 	// hookChan <- name
 }
 
-// func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
+func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
 	// name := "SetTrieFlushIntervalClone"
 	// m := map[string]struct{}{
 	// 	name:SetTrieFlushIntervalClone,
 	// }
 	// hookChan <- m
-	// return t
-// }
+	return t
+}
 
 // var Interval time.Duration 
 
@@ -144,8 +131,10 @@ func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
 // core/state/
 
 func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
-// 	name := "StateUpdate"
-// 	hookChan<- name
+	m := map[string]struct{}{
+		"StateUpdate":struct{}{},
+	}
+	hookChan <- m
 }
 
 // core/vm we have code in core/vm but not hooks
@@ -161,11 +150,15 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[co
 
 
 var plugins map[string]struct{} = map[string]struct{}{
+	"StateUpdate": struct{}{},
 	"PreProcessBlock": struct{}{},
 	"PreProcessTransaction": struct{}{},
 	"PostProcessTransaction": struct{}{},
 	"PostProcessBlock": struct{}{},
 	"NewHead": struct{}{},
+	"CaptureStart": struct{}{},
+	"CaptureEnd": struct{}{},
+	"Result": struct{}{},
 	// "GetRPCCalls": struct{}{},
 } 
 
