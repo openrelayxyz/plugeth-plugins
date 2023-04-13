@@ -4,10 +4,11 @@ import (
 	"context"
 	"math/big"
 	"time"
-	"os"
+	// "os"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
+	// "github.com/openrelayxyz/plugeth-utils/restricted/types"
 )
 
 type engineService struct {
@@ -21,22 +22,28 @@ var hookChan chan map[string]struct{} = make(chan map[string]struct{})
 
 func HookTester() {
 
+	defer txTracer()
+
+	log.Error("inside of hooktester")
+	
 	blockFactory()
+
 
 	log.Error("Pre loop map", "plugins", plugins)
 
 	go func () {
 		for {
 			select {
-				case <- time.NewTimer(5 * time.Second).C:
-					if len(plugins) > 0 {
-						log.Error("told you so", "len", len(plugins))
-						os.Exit(1)
-					} else {
-						log.Error("Exit without error", "len", len(plugins))
-						os.Exit(0)
-					}
+				// case <- time.NewTimer(5 * time.Second).C:
+				// 	if len(plugins) > 0 {
+				// 		log.Error("Exit with Error, Plugins map not empty", "Plugins not called", plugins)
+				// 		os.Exit(1)
+				// 	} else {
+				// 		log.Error("Exit without error", "len", len(plugins))
+				// 		os.Exit(0)
+				// 	}
 				case m := <- hookChan:
+					log.Error("this came in off of the hookChan", "m", m)
 					var ok bool
 					f := func(key string) bool {_, ok = m[key]; return ok}
 					switch {
@@ -71,13 +78,15 @@ type TransactionArgs struct {
 	Nonce 				 *hexutil.Big    `json:"nonce"`
 }
 
+var t0 core.Hash
+
 func blockFactory() {
 
 	cl := apis[0].Service.(*engineService).stack
 	client, err := cl.Attach()
 	if err != nil {
 		errs <- err
-		log.Error("Error connecting with client")
+		log.Error("Error connecting with client block factory")
 	}
 
 	var coinBase *core.Address
@@ -107,14 +116,67 @@ func blockFactory() {
 		Value: v,
 	}
 
-	var t0 interface{}
+	// var t0 core.Hash
 	err = client.Call(&t0, "eth_sendTransaction", tx0_params)
 	if err != nil {
 		errs <- err
 		log.Error("failed to call method eth_sendTransaction", "err", err)
 	}
 	log.Error("this is the return value for eth_sendTransaction zero", "tx0", t0)
+
+	// time.Sleep(2 * time.Second)
+	// var val interface{}
+	// err = client.Call(&val, "debug_traceTransaction", t0)
+	// log.Error("tracer result", "val", val, "err", err)
+
 }
+
+func txTracer() {
+	cl := apis[0].Service.(*engineService).stack
+	client, err := cl.Attach()
+	if err != nil {
+		errs <- err
+		log.Error("Error connecting with client block factory")
+	}
+
+	// var bh interface{}
+	// err = client.Call(&bh, "eth_getTransactionByHash", t0)
+	// log.Error("by hash result", "val", bh, "err", err, "hash", t0)
+
+	// var bn interface{}
+	// err = client.Call(&bn, "eth_getBlockByNumber", "latest", false)
+	// log.Error("by number result", "val", bh, "err", err)
+
+	var tracer *string
+	tr := "testTracer"
+	tracer = &tr
+	time.Sleep(2 * time.Second)
+	t := &tracerTypeParams{
+		tracer: tracer,
+	}
+
+	var trResult interface{}
+	err = client.Call(&trResult, "debug_traceTransaction", t0, t)
+	log.Error("tracer result", "result", trResult, "err", err, "hash", t0)
+
+}
+
+type innerParams struct {
+	to string `json:"to"`
+}
+
+type tracerTypeParams struct {
+	tracer *string `json:"tracer"`
+}
+
+type tracerParams struct {
+	innerParams
+	*hexutil.Uint64 
+	tracerTypeParams 
+
+}
+
+// {"to":"0x32Be343B94f860124dC4fEe278FDCBD38C102D88"},"latest",{"tracer":"myTracer"}],"id":0
 
 
 func (service *engineService) Test(ctx context.Context) string {

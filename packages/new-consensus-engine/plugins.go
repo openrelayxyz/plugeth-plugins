@@ -1,7 +1,7 @@
 package main
 
 import (
-	"time"
+	// "time"
 	"math/big"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
@@ -110,14 +110,14 @@ func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) {
 	// hookChan <- name
 }
 
-func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
+// func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
 	// name := "SetTrieFlushIntervalClone"
 	// m := map[string]struct{}{
 	// 	name:SetTrieFlushIntervalClone,
 	// }
 	// hookChan <- m
-	return t
-}
+	// return t
+// }
 
 // var Interval time.Duration 
 
@@ -136,29 +136,28 @@ func ModifyAncients(index uint64, freezerUpdate map[string]struct{}) {
 	// hookChan<- name
 }
 
-// func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
-// 	name := "AppendAncient"
-// 	hookChan<- name
-// }
+func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
+	// name := "AppendAncient"
+	// hookChan<- name
+}
 
 // core/state/
 
-// func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
+func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
 // 	name := "StateUpdate"
 // 	hookChan<- name
-// }
+}
 
 // core/vm we have code in core/vm but not hooks
 
 // rpc/
 
-func GetRPCCalls(method string, id string, params string) {
-	// name := "GetRPCCalls"
-	// m := map[string]struct{}{
-	// 	name:GetRPCCalls,
-	// }
-	// hookChan <- m
-}
+// func GetRPCCalls(method string, id string, params string) {
+// 	m := map[string]struct{}{
+// 		"GetRPCCalls":struct{}{},
+// 	}
+// 	hookChan <- m
+// }
 
 
 var plugins map[string]struct{} = map[string]struct{}{
@@ -167,14 +166,6 @@ var plugins map[string]struct{} = map[string]struct{}{
 	"PostProcessTransaction": struct{}{},
 	"PostProcessBlock": struct{}{},
 	"NewHead": struct{}{},
+	// "GetRPCCalls": struct{}{},
 } 
 
-// var plugins map[string]interface{} = map[string]interface{}{
-// 	"PreProcessBlock": PreProcessBlock,
-// 	"PreProcessTransaction": PreProcessTransaction,
-// 	"PostProcessTransaction": PostProcessTransaction,
-// 	"PostProcessBlock": PostProcessBlock,
-// 	"NewHead": NewHead,
-// 	// "GetRPCCalls": GetRPCCalls,
-// 	// "SetTrieFlushIntervalClone": SetTrieFlushIntervalClone,
-// } 
