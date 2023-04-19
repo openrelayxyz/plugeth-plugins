@@ -20,6 +20,12 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 			Service:   &engineService{backend, stack},
 			Public:    true,
 		},
+		{
+			Namespace: "plugeth",
+			Version:   "1.0",
+			Service:   &LiveTracerResult{backend, stack},
+			Public:    true,
+		},
 	}
 	// m := map[string]struct{}{
 	// 	"GetAPIs":struct{}{},

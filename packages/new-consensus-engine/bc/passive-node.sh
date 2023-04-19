@@ -1,7 +1,7 @@
 rm -r 01/ test01/ 
 rm passwordfile
 mkdir -p test01/ 01/keystore 01/geth 01/plugins
-cp ../engine.go ../main.go ../plugins.go ../tracer.go  test01/
+cp ../engine.go ../main.go ../plugins.go ../tracer.go ../live_tracer.go  test01/
 cd test01/ 
 go build -buildmode=plugin -o ../01/plugins
 cd ../

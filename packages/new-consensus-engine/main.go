@@ -59,10 +59,10 @@ func HookTester() {
 							delete(plugins, "PostProcessBlock")
 						case f("NewHead"):
 							delete(plugins, "NewHead")
-						case f("GetRPCCalls"):
-							delete(plugins, "GetRPCCalls")
-						case f("SetTrieFlushIntervalClone"):
-							delete(plugins, "SetTrieFlushIntervalClone")
+						// case f("GetRPCCalls"):
+						// 	delete(plugins, "GetRPCCalls")
+						// case f("SetTrieFlushIntervalClone"):
+						// 	delete(plugins, "SetTrieFlushIntervalClone")
 						case f("CaptureStart"):
 							delete(plugins, "CaptureStart")
 						case f("CaptureEnd"):
@@ -145,16 +145,6 @@ func txTracer() {
 		log.Error("Error connecting with client block factory")
 	}
 
-	// var bh interface{}
-	// err = client.Call(&bh, "eth_getTransactionByHash", t0)
-	// log.Error("by hash result", "val", bh, "err", err, "hash", t0)
-
-	// var bn interface{}
-	// err = client.Call(&bn, "eth_getBlockByNumber", "latest", false)
-	// log.Error("by number result", "val", bh, "err", err)
-
-	// var tracer *string
-	// tracer = tr 
 	time.Sleep(2 * time.Second)
 	tr := "testTracer"
 	t := TraceConfig{
