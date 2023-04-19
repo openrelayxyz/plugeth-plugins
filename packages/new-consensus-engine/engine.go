@@ -76,6 +76,9 @@ func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Heade
 func (e *engine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, withdrawals []*types.Withdrawal) (*types.Block, error) {
 	log.Error("inside of FinalizeAndAssemble")
 	// header.Root = state.IntermediateRoot(false)
+	//iterate over the list of receipts 
+	//perform the same changes to each receipt that is performed in geth
+	 
 	header.Root = core.HexToHash("0x8fb57ddad3e9f83990092976adcec803324fd045988fd60225058f87a1439eab")
 	// return types.NewBlockWithHeader(header).WithBody(txs, uncles).WithWithdrawals(withdrawals), nil
 	hasher := hasher.NewStackTrie(nil)

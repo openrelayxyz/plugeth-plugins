@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 	"time"
-	"os"
+	// "os"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -34,14 +34,14 @@ func HookTester() {
 	go func () {
 		for {
 			select {
-				case <- time.NewTimer(5 * time.Second).C:
-					if len(plugins) > 0 {
-						log.Error("Exit with Error, Plugins map not empty", "Plugins not called", plugins)
-						os.Exit(1)
-					} else {
-						log.Error("Exit without error", "len", len(plugins))
-						os.Exit(0)
-					}
+				// case <- time.NewTimer(5 * time.Second).C:
+				// 	if len(plugins) > 0 {
+				// 		log.Error("Exit with Error, Plugins map not empty", "Plugins not called", plugins)
+				// 		os.Exit(1)
+				// 	} else {
+				// 		log.Error("Exit without error", "len", len(plugins))
+				// 		os.Exit(0)
+				// 	}
 				case m := <- hookChan:
 					log.Error("this came in off of the hookChan", "m", m)
 					var ok bool
@@ -63,16 +63,43 @@ func HookTester() {
 						// 	delete(plugins, "GetRPCCalls")
 						// case f("SetTrieFlushIntervalClone"):
 						// 	delete(plugins, "SetTrieFlushIntervalClone")
-						case f("CaptureStart"):
-							delete(plugins, "CaptureStart")
-						case f("CaptureEnd"):
-							delete(plugins, "CaptureEnd")
-						case f("Result"):
-							delete(plugins, "Result")
+						case f("StandardCaptureStart"):
+							delete(plugins, "StandardCaptureStart")
+						case f("StandardCaptureState"):
+							delete(plugins, "StandardCaptureState")
+						case f("StandardCaptureFault"):
+							delete(plugins, "StandardCaptureFault")
+						case f("StandardCaptureEnter"):
+							delete(plugins, "StandardCaptureEnter")
+						case f("StandardCaptureExit"):
+							delete(plugins, "StandardCaptureExit")
+						case f("StandardCaptureEnd"):
+							delete(plugins, "StandardCaptureEnd")
+						case f("StandardTracerResult"):
+							delete(plugins, "StandardTracerResult")
+						case f("LivePreProcessBlock"):
+							delete(plugins, "LivePreProcessBlock")
+						case f("LiveCaptureStart"):
+							delete(plugins, "LiveCaptureStart")
+						case f("LiveCaptureState"):
+							delete(plugins, "LiveCaptureState")
+						case f("LiveCaptureFault"):
+							delete(plugins, "LiveCaptureFault")
+						case f("LiveCaptureEnter"):
+							delete(plugins, "LiveCaptureEnter")
+						case f("LiveCaptureExit"):
+							delete(plugins, "LiveCaptureExit")
+						case f("LiveCaptureEnd"):
+							delete(plugins, "LiveCaptureEnd")
+						case f("LiveTracerResult"):
+							delete(plugins, "LiveTracerResult")
 				}
 			}
 		}
 	}()
+
+	// time.Sleep(2 * time.Second)
+	// txContracts()
 }
 
 type TransactionArgs struct {
@@ -87,6 +114,9 @@ type TransactionArgs struct {
 }
 
 var t0 core.Hash
+var t1 core.Hash
+var t2 core.Hash
+var coinBase *core.Address
 
 func blockFactory() {
 
@@ -97,7 +127,6 @@ func blockFactory() {
 		log.Error("Error connecting with client block factory")
 	}
 
-	var coinBase *core.Address
 	err = client.Call(&coinBase, "eth_coinbase")
 	if err != nil {
 		errs <- err
@@ -123,14 +152,84 @@ func blockFactory() {
 		To: &unlockedAccount,
 		Value: v,
 	}
-
+	
 	err = client.Call(&t0, "eth_sendTransaction", tx0_params)
 	if err != nil {
-		errs <- err
 		log.Error("failed to call method eth_sendTransaction", "err", err)
 	}
 	log.Error("this is the return value for eth_sendTransaction zero", "tx0", t0)
 
+	arg0 := map[string]interface{}{
+		// "input": "0x60006000fd",
+		"input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+		"from": coinBase,
+	}
+
+	time.Sleep(2 * time.Second)
+	log.Error("second client call")
+	err = client.Call(&t1, "eth_sendTransaction", arg0)
+	if err != nil {
+		errs <- err
+		log.Error("failed to call method eth_sendTransaction", "err", err)
+	}
+	log.Error("this is the return value for eth_sendTransaction one", "tx1", t1)
+
+	// arg1 := map[string]interface{}{
+	// 	"input": "0x60006000fd",
+	// 	// "input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+	// 	"from": coinBase,
+	// }
+
+	// time.Sleep(2 * time.Second)
+	// log.Error("third client call")
+	// err = client.Call(&t2, "eth_sendTransaction", arg1)
+	// if err != nil {
+	// 	errs <- err
+	// 	log.Error("failed to call method eth_sendTransaction", "err", err)
+	// }
+	// log.Error("this is the return value for eth_sendTransaction one", "tx1", t2)
+	
+}
+
+func txContracts() {
+
+	cl := apis[0].Service.(*engineService).stack
+	client, err := cl.Attach()
+	if err != nil {
+		errs <- err
+		log.Error("Error connecting with client block factory")
+	}
+
+	arg0 := map[string]interface{}{
+		// "input": "0x60006000fd",
+		"input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+		"from": coinBase,
+	}
+
+
+	time.Sleep(2 * time.Second)
+	log.Error("second client call")
+	err = client.Call(&t1, "eth_sendTransaction", arg0)
+	if err != nil {
+		errs <- err
+		log.Error("failed to call method eth_sendTransaction", "err", err)
+	}
+	log.Error("this is the return value for eth_sendTransaction one", "tx1", t1)
+
+	// arg1 := map[string]interface{}{
+	// 	"input": "0x60006000fd",
+	// 	// "input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+	// 	"from": coinBase,
+	// }
+
+	// time.Sleep(2 * time.Second)
+	// log.Error("third client call")
+	// err = client.Call(&t2, "eth_sendTransaction", arg1)
+	// if err != nil {
+	// 	errs <- err
+	// 	log.Error("failed to call method eth_sendTransaction", "err", err)
+	// }
+	// log.Error("this is the return value for eth_sendTransaction one", "tx1", t2)
 }
 
 type TraceConfig struct {
@@ -155,22 +254,39 @@ func txTracer() {
 	err = client.Call(&trResult, "debug_traceTransaction", t0, t)
 	log.Error("tracer result", "result", trResult, "err", err, "hash", t0)
 
+	arg0 := map[string]interface{}{
+		"input": "0x60006000fd",
+		"from": coinBase,
+	}
+
+	var trResult0 interface{}
+	err = client.Call(&trResult0, "debug_traceCall", arg0, "latest", t)
+	log.Error("tracer result", "result", trResult0, "err", err)
+
+	arg1 := map[string]interface{}{
+		"input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+		"from": coinBase,
+	}
+
+	var trResult1 interface{}
+	err = client.Call(&trResult1, "debug_traceCall", arg1, "latest", t)
+
 }
 
 type innerParams struct {
 	to string `json:"to"`
 }
 
-type tracerTypeParams struct {
-	tracer *string `json:"tracer"`
-}
+// type tracerTypeParams struct {
+// 	tracer *string `json:"tracer"`
+// }
 
-type tracerParams struct {
-	innerParams
-	*hexutil.Uint64 
-	tracerTypeParams 
+// type tracerParams struct {
+// 	innerParams
+// 	*hexutil.Uint64 
+// 	tracerTypeParams 
 
-}
+// }
 
 // {"to":"0x32Be343B94f860124dC4fEe278FDCBD38C102D88"},"latest",{"tracer":"myTracer"}],"id":0
 

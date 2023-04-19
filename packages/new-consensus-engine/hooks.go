@@ -23,7 +23,7 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 		{
 			Namespace: "plugeth",
 			Version:   "1.0",
-			Service:   &LiveTracerResult{backend, stack},
+			Service:   &LiveTracerResult{},
 			Public:    true,
 		},
 	}
@@ -46,67 +46,64 @@ func OnShutdown(){
 
 
 func PreProcessBlock(hash core.Hash, number uint64, encoded []byte) {
-	name := "PreProcessBlock"
 	m := map[string]struct{}{
-		name:struct{}{},
+		"PreProcessBlock":struct{}{},
 	}
 	hookChan <- m
 }
 
 func PreProcessTransaction(txBytes []byte, txHash, blockHash core.Hash, i int) {
-	name := "PreProcessTransaction"
 	m := map[string]struct{}{
-		name:struct{}{},
+		"PreProcessTransaction":struct{}{},
 	}
 	hookChan <- m
 }
 
-func BlockProcessingError(tx core.Hash, block core.Hash, err error) {
-	// name := "BlockProcessingError"
-	// name := map[string]func(item struct{}){
-	// 	name:func(core.Hash, core.Hash, error)
+func BlockProcessingError(tx core.Hash, block core.Hash, err error) { //also may be beyond scope
+	// m := map[string]struct{}{
+	// 	"BlockProcessingError":struct{}{},
 	// }
-	// hookChan <- name
+	// hookChan <- m
 }
 
 func PostProcessTransaction(tx core.Hash, block core.Hash, i int, receipt []byte) {
-	name := "PostProcessTransaction"
 	m := map[string]struct{}{
-		name:struct{}{},
+		"PostProcessTransaction":struct{}{},
 	}
 	hookChan <- m
 }
 
 func PostProcessBlock(block core.Hash) {
-	name := "PostProcessBlock"
 	m := map[string]struct{}{
-		name:struct{}{},
+		"PostProcessBlock":struct{}{},
 	}
 	hookChan <- m
 }
 
 func NewHead(block []byte, hash core.Hash, logs [][]byte, td *big.Int) {
-	name := "NewHead"
 	m := map[string]struct{}{
-		name:struct{}{},
+		"NewHead":struct{}{},
 	}
 	hookChan <- m
 }
 
-func NewSideBlock(block []byte, hash core.Hash, logs [][]byte) {
-	// name := "NewSideBlock"
-	// hookChan <- name
+func NewSideBlock(block []byte, hash core.Hash, logs [][]byte) { // beyond the scope of the test at this time
+	// m := map[string]struct{}{
+	// 	"NewSideBlock":struct{}{},
+	// }
+	// hookChan <- m
 }
 
-func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) {
-	// name := "Reorg"
-	// hookChan <- name
+func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) { // beyond the scope of the test at this time
+	// m := map[string]struct{}{
+	// 	"Reorg":struct{}{},
+	// }
+	// hookChan <- m
 }
 
 func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
-	// name := "SetTrieFlushIntervalClone"
 	// m := map[string]struct{}{
-	// 	name:SetTrieFlushIntervalClone,
+	// 	"SetTrieFlushIntervalClone":struct{}{},
 	// }
 	// hookChan <- m
 	return t
@@ -162,9 +159,24 @@ var plugins map[string]struct{} = map[string]struct{}{
 	"PostProcessTransaction": struct{}{},
 	"PostProcessBlock": struct{}{},
 	"NewHead": struct{}{},
-	"CaptureStart": struct{}{},
-	"CaptureEnd": struct{}{},
-	"Result": struct{}{},
+	"StandardCaptureStart": struct{}{},
+	"StandardCaptureState": struct{}{},
+	"StandardCaptureFault": struct{}{},
+	"StandardCaptureEnter": struct{}{},
+	"StandardCaptureExit": struct{}{},
+	"StandardCaptureEnd": struct{}{},
+	"StandardTracerResult": struct{}{},
 	// "GetRPCCalls": struct{}{},
+	"LivePreProcessBlock": struct{}{},
+	"LivePreProcessTransaction": struct{}{},
+	"LivePostProcessTransaction": struct{}{},
+	"LivePostProcessBlock": struct{}{},
+	"LiveCaptureStart": struct{}{},
+	"LiveCaptureState": struct{}{},
+	"LiveCaptureFault": struct{}{},
+	"LiveCaptureEnter": struct{}{},
+	"LiveCaptureExit": struct{}{},
+	"LiveCaptureEnd": struct{}{},
+	"LiveTracerResult": struct{}{},
 } 
 
