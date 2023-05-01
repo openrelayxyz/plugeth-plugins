@@ -346,6 +346,7 @@ func BlockUpdatesByNumber(number int64) (*types.Block, *big.Int, types.Receipts,
 	if v, ok := cache.Get(block.Root()); ok {
 		su = v.(*stateUpdate)
 	} else {
+		su = new(stateUpdate)
 		data, err := backend.ChainDb().Get(append([]byte("su"), block.Root().Bytes()...))
 		if err != nil { return &block, td, receipts, nil, nil, nil, nil, fmt.Errorf("State Updates unavailable for block %v", block.Hash())}
 		if err := rlp.DecodeBytes(data, su); err != nil { return &block, td, receipts, nil, nil, nil, nil, fmt.Errorf("State updates unavailable for block %#x", block.Hash()) }
