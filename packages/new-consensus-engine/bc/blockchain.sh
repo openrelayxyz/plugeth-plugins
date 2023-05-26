@@ -2,7 +2,7 @@ rm -r 00/ 01/ test00/ test01/
 rm passwordfile
 mkdir -p test00/ test01/ 00/keystore 01/keystore 00/geth 01/geth 00/plugins 01/plugins
 cp ../engine.go test00/ 
-cp ../engine.go ../main.go ../plugins.go  test01/
+cp ../engine.go ../main.go ../hooks.go  test01/
 cd test00/ 
 go build -buildmode=plugin -o ../00/plugins
 cd ../test01/ 
