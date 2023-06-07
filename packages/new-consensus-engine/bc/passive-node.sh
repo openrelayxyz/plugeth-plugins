@@ -1,5 +1,4 @@
-rm -r 01/ test01/ 
-rm passwordfile
+[ -f "passwordfile" ] && rm passwordfile && [ -d "01/" ] && rm -r 01/ && [ -d "test01/" ] && rm -r test01/
 mkdir -p test01/ 01/keystore 01/geth 01/plugins
 cp ../engine.go ../main.go ../hooks.go ../tracer.go ../live_tracer.go  test01/
 cd test01/ 

@@ -17,9 +17,11 @@ var (
 	log     core.Logger
 	events  core.Feed
 )
+
 var httpApiFlagName = "http.api"
 
 func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
+	// log.Error("inside initalize engine")
 	pl = loader
 	events = pl.GetFeed()
 	log = logger

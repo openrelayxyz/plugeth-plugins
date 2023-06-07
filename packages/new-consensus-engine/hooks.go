@@ -13,6 +13,7 @@ import (
 var apis []core.API
 
 func GetAPIs(stack core.Node, backend core.Backend) []core.API {
+	// GetAPIs is covered by virtue of the plugeth_captureShutdown method functioning.
 	apis = []core.API{
 		{
 			Namespace: "plugeth",
@@ -27,19 +28,11 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 			Public:    true,
 		},
 	}
-	// m := map[string]struct{}{
-	// 	"GetAPIs":struct{}{},
-	// }
-	// hookChan <- m
 	return apis
 }
 
 func OnShutdown(){
-	// name := "OnShutdown"
-	// m := map[string]interface{}{
-	// 	name: func(),
-	// }
-	// hookChan <- m
+	// this injection is covered by its own test in this package. See documentation for details. 
 }
 
 // core/
@@ -59,11 +52,8 @@ func PreProcessTransaction(txBytes []byte, txHash, blockHash core.Hash, i int) {
 	hookChan <- m
 }
 
-func BlockProcessingError(tx core.Hash, block core.Hash, err error) { //also may be beyond scope
-	// m := map[string]struct{}{
-	// 	"BlockProcessingError":struct{}{},
-	// }
-	// hookChan <- m
+func BlockProcessingError(tx core.Hash, block core.Hash, err error) { 
+	// this injection is covered by a stand alone test: plugeth_injection_test.go in the core/ package. 
 }
 
 func PostProcessTransaction(tx core.Hash, block core.Hash, i int, receipt []byte) {
@@ -88,24 +78,19 @@ func NewHead(block []byte, hash core.Hash, logs [][]byte, td *big.Int) {
 }
 
 func NewSideBlock(block []byte, hash core.Hash, logs [][]byte) { // beyond the scope of the test at this time
-	// m := map[string]struct{}{
-	// 	"NewSideBlock":struct{}{},
-	// }
-	// hookChan <- m
+	// this injection is covered by a stand alone test: plugeth_injection_test.go in the core/ package.
 }
 
 func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) { // beyond the scope of the test at this time
-	// m := map[string]struct{}{
-	// 	"Reorg":struct{}{},
-	// }
-	// hookChan <- m
+	// this injection is covered by a stand alone test: plugeth_injection_test.go in the core/ package.
 }
 
 func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
-	// m := map[string]struct{}{
-	// 	"SetTrieFlushIntervalClone":struct{}{},
-	// }
-	// hookChan <- m
+	m := map[string]struct{}{
+		"SetTrieFlushIntervalClone":struct{}{},
+	}
+	log.Error("INSIDE OF TIFC TIFC TIFC TIFC")
+	hookChan <- m
 	return t
 }
 
@@ -122,13 +107,11 @@ func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
 // core/rawdb/
 
 func ModifyAncients(index uint64, freezerUpdate map[string]struct{}) {
-	// name := "ModifyAncients"
-	// hookChan<- name
+	// this injection is covered by a stand alone test: plugeth_injection_test.go in the core/rawdb package. 
 }
 
 func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
-	// name := "AppendAncient"
-	// hookChan<- name
+	// this injection is covered by a stand alone test: plugeth_injection_test.go in the core/rawdb package.
 }
 
 // core/state/
@@ -148,11 +131,14 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[co
 // 	m := map[string]struct{}{
 // 		"GetRPCCalls":struct{}{},
 // 	}
+// 	log.Error("inside of get rpccallssss")
 // 	hookChan <- m
 // }
 
 
 var plugins map[string]struct{} = map[string]struct{}{
+	"OnShutdown": struct{}{},
+	"SetTrieFlushIntervalClone":struct{}{},
 	"StateUpdate": struct{}{},
 	"PreProcessBlock": struct{}{},
 	"PreProcessTransaction": struct{}{},
@@ -166,7 +152,7 @@ var plugins map[string]struct{} = map[string]struct{}{
 	"StandardCaptureExit": struct{}{},
 	"StandardCaptureEnd": struct{}{},
 	"StandardTracerResult": struct{}{},
-	// "GetRPCCalls": struct{}{},
+	"GetRPCCalls": struct{}{},
 	"LivePreProcessBlock": struct{}{},
 	"LivePreProcessTransaction": struct{}{},
 	"LivePostProcessTransaction": struct{}{},

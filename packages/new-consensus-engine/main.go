@@ -4,7 +4,7 @@ import (
 	"context"
 	"math/big"
 	"time"
-	// "os"
+	"os"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -22,11 +22,23 @@ var hookChan chan map[string]struct{} = make(chan map[string]struct{})
 
 func HookTester() {
 
+	log.Error("inside of plugin hooktester")
+
 	defer txTracer()
 
-	log.Error("inside of hooktester")
+	// lt := LiveTracerResult{}
+
+	// _, err := lt.TestLiveTracer(context.Background())
+	// log.Error("called live tracer", "lt", lt)
+	// if err != nil {
+	// 	log.Error("LIIIIVEEEE TRRRAAACCCEEERRRR ERRRORRR", "err", err)
+	// }
+	// log.Error("NOT NIIILLL TRACER ERRROR", "err", err)
+
+	// log.Error("inside of hooktester")
 	
 	blockFactory()
+	log.Error("called block factory")
 
 
 	log.Error("Pre loop map", "plugins", plugins)
@@ -34,19 +46,21 @@ func HookTester() {
 	go func () {
 		for {
 			select {
-				// case <- time.NewTimer(5 * time.Second).C:
-				// 	if len(plugins) > 0 {
-				// 		log.Error("Exit with Error, Plugins map not empty", "Plugins not called", plugins)
-				// 		os.Exit(1)
-				// 	} else {
-				// 		log.Error("Exit without error", "len", len(plugins))
-				// 		os.Exit(0)
-				// 	}
+				case <- time.NewTimer(15 * time.Second).C:
+					if len(plugins) > 0 {
+						log.Error("Exit with Error, Plugins map not empty", "Plugins not called", plugins)
+						os.Exit(1)
+					} else {
+						log.Error("Exit without error", "len", len(plugins))
+						os.Exit(0)
+					}
 				case m := <- hookChan:
 					log.Error("this came in off of the hookChan", "m", m)
 					var ok bool
 					f := func(key string) bool {_, ok = m[key]; return ok}
 					switch {
+						case f("OnShutdown"):
+							delete(plugins, "OnShutdown")
 						case f("StateUpdate"):
 							delete(plugins, "StateUpdate")
 						case f("PreProcessBlock"):
@@ -59,10 +73,18 @@ func HookTester() {
 							delete(plugins, "PostProcessBlock")
 						case f("NewHead"):
 							delete(plugins, "NewHead")
+						case f("LivePreProcessBlock"):
+							delete(plugins, "LivePreProcessBlock")
+						case f("LivePreProcessTransaction"):
+							delete(plugins, "LivePreProcessTransaction")
+						case f("LivePostProcessTransaction"):
+							delete(plugins, "LivePostProcessTransaction")
+						case f("LivePostProcessBlock"):
+							delete(plugins, "LivePostProcessBlock")
 						// case f("GetRPCCalls"):
 						// 	delete(plugins, "GetRPCCalls")
-						// case f("SetTrieFlushIntervalClone"):
-						// 	delete(plugins, "SetTrieFlushIntervalClone")
+						case f("SetTrieFlushIntervalClone"):
+							delete(plugins, "SetTrieFlushIntervalClone")
 						case f("StandardCaptureStart"):
 							delete(plugins, "StandardCaptureStart")
 						case f("StandardCaptureState"):
@@ -98,8 +120,8 @@ func HookTester() {
 		}
 	}()
 
-	// time.Sleep(2 * time.Second)
-	// txContracts()
+	time.Sleep(2 * time.Second)
+	txContracts()
 }
 
 type TransactionArgs struct {
@@ -159,20 +181,20 @@ func blockFactory() {
 	}
 	log.Error("this is the return value for eth_sendTransaction zero", "tx0", t0)
 
-	arg0 := map[string]interface{}{
-		// "input": "0x60006000fd",
-		"input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
-		"from": coinBase,
-	}
+	// arg0 := map[string]interface{}{
+	// 	// "input": "0x60006000fd",
+	// 	"input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+	// 	"from": coinBase,
+	// }
 
-	time.Sleep(2 * time.Second)
-	log.Error("second client call")
-	err = client.Call(&t1, "eth_sendTransaction", arg0)
-	if err != nil {
-		errs <- err
-		log.Error("failed to call method eth_sendTransaction", "err", err)
-	}
-	log.Error("this is the return value for eth_sendTransaction one", "tx1", t1)
+	// time.Sleep(2 * time.Second)
+	// log.Error("second client call")
+	// err = client.Call(&t1, "eth_sendTransaction", arg0)
+	// if err != nil {
+	// 	errs <- err
+	// 	log.Error("failed to call method eth_sendTransaction", "err", err)
+	// }
+	// log.Error("this is the return value for eth_sendTransaction one", "tx1", t1)
 
 	// arg1 := map[string]interface{}{
 	// 	"input": "0x60006000fd",
@@ -291,7 +313,10 @@ type innerParams struct {
 // {"to":"0x32Be343B94f860124dC4fEe278FDCBD38C102D88"},"latest",{"tracer":"myTracer"}],"id":0
 
 
-func (service *engineService) Test(ctx context.Context) string {
-	return "this is a placeholder function"
+func (service *engineService) CaptureShutdown(ctx context.Context) {
+	m := map[string]struct{}{
+		"OnShutdown":struct{}{},
+	}
+	hookChan <- m
 }
 
