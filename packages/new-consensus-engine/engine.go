@@ -18,6 +18,8 @@ var (
 	events  core.Feed
 )
 
+var hookChan chan map[string]struct{} = make(chan map[string]struct{})
+
 var httpApiFlagName = "http.api"
 
 func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
@@ -40,7 +42,7 @@ type engine struct {
 func (e *engine) Author(header *types.Header) (core.Address, error) {
 	// log.Error("inside of author")
 	// log.Error("Inside of Author()", "header", header)
-	return core.Address{}, nil
+	return header.Coinbase, nil
 }
 func (e *engine) VerifyHeader(chain consensus.ChainHeaderReader, header *types.Header, seal bool) error {
 	// log.Error("inside of verifyHeader")
@@ -77,15 +79,16 @@ func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Heade
 }
 func (e *engine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, withdrawals []*types.Withdrawal) (*types.Block, error) {
 	log.Error("inside of FinalizeAndAssemble")
-	// header.Root = state.IntermediateRoot(false)
+	header.Root = state.IntermediateRoot(false)
 	//iterate over the list of receipts 
 	//perform the same changes to each receipt that is performed in geth
 	 
-	header.Root = core.HexToHash("0x8fb57ddad3e9f83990092976adcec803324fd045988fd60225058f87a1439eab")
+	// header.Root = core.HexToHash("0x8fb57ddad3e9f83990092976adcec803324fd045988fd60225058f87a1439eab")
 	// return types.NewBlockWithHeader(header).WithBody(txs, uncles).WithWithdrawals(withdrawals), nil
 	hasher := hasher.NewStackTrie(nil)
 	block := types.NewBlockWithWithdrawals(header, txs, uncles, receipts, withdrawals, hasher)
 	return block, nil
+
 }
 func (e *engine) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 	// log.Error("inside of Seal")
@@ -118,4 +121,12 @@ func (e *engine) Close() error {
 
 func CreateEngine(core.Node, []string, bool, restricted.Database) consensus.Engine {
 	return &engine{}
+}
+
+func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
+	log.Warn("StatueUpdate", "blockRoot", blockRoot, "parentRoot", parentRoot, "coreDestructs", coreDestructs, "coreAccounts", coreAccounts, "coreStorage", coreStorage, "coreCode", coreCode)
+	// m := map[string]struct{}{
+	// 	"StateUpdate":struct{}{},
+	// }
+	// hookChan <- m
 }

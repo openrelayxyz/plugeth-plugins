@@ -11,27 +11,27 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 )
 
-type LiveTracerResult struct {
-	// backend core.Backend
-	// stack core.Node
-	CallStack []CallStack
-	Results   []CallStack
-}
+// type LiveTracerResult struct {
+// 	// backend core.Backend
+// 	// stack core.Node
+// 	CallStack []CallStack
+// 	Results   []CallStack
+// }
 
-type CallStack struct {
-	Type    string         `json:"type"`
-	From    core.Address   `json:"from"`
-	To      core.Address   `json:"to"`
-	Value   *big.Int       `json:"value,omitempty"`
-	Gas     hexutil.Uint64 `json:"gas"`
-	GasUsed hexutil.Uint64 `json:"gasUsed"`
-	Input   hexutil.Bytes  `json:"input"`
-	Output  hexutil.Bytes  `json:"output"`
-	Time    string         `json:"time,omitempty"`
-	Calls   []CallStack    `json:"calls,omitempty"`
-	Results []CallStack    `json:"results,omitempty"`
-	Error   string         `json:"error,omitempty"`
-}
+// type CallStack struct {
+// 	Type    string         `json:"type"`
+// 	From    core.Address   `json:"from"`
+// 	To      core.Address   `json:"to"`
+// 	Value   *big.Int       `json:"value,omitempty"`
+// 	Gas     hexutil.Uint64 `json:"gas"`
+// 	GasUsed hexutil.Uint64 `json:"gasUsed"`
+// 	Input   hexutil.Bytes  `json:"input"`
+// 	Output  hexutil.Bytes  `json:"output"`
+// 	Time    string         `json:"time,omitempty"`
+// 	Calls   []CallStack    `json:"calls,omitempty"`
+// 	Results []CallStack    `json:"results,omitempty"`
+// 	Error   string         `json:"error,omitempty"`
+// }
 
 // func (t *LiveTracerResult) TestLiveTracer(ctx context.Context) string {
 // 	return "testLiveTracer"

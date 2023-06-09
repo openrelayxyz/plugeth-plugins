@@ -5,12 +5,51 @@ import (
 	"math/big"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
+	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	
 )
 
 // cmd/geth/
 
 var apis []core.API
+
+// var hookChan chan map[string]struct{} = make(chan map[string]struct{})
+
+type LiveTracerResult struct {
+	// backend core.Backend
+	// stack core.Node
+	CallStack []CallStack
+	Results   []CallStack
+}
+
+type engineService struct {
+	backend core.Backend
+	stack core.Node
+}
+
+func (e *engineService) Test() {
+	log.Info("")
+}
+
+func (e *LiveTracerResult) Test() {
+	log.Info("")
+}
+
+
+type CallStack struct {
+	Type    string         `json:"type"`
+	From    core.Address   `json:"from"`
+	To      core.Address   `json:"to"`
+	Value   *big.Int       `json:"value,omitempty"`
+	Gas     hexutil.Uint64 `json:"gas"`
+	GasUsed hexutil.Uint64 `json:"gasUsed"`
+	Input   hexutil.Bytes  `json:"input"`
+	Output  hexutil.Bytes  `json:"output"`
+	Time    string         `json:"time,omitempty"`
+	Calls   []CallStack    `json:"calls,omitempty"`
+	Results []CallStack    `json:"results,omitempty"`
+	Error   string         `json:"error,omitempty"`
+}
 
 func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	// GetAPIs is covered by virtue of the plugeth_captureShutdown method functioning.
@@ -116,12 +155,13 @@ func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
 
 // core/state/
 
-func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
-	m := map[string]struct{}{
-		"StateUpdate":struct{}{},
-	}
-	hookChan <- m
-}
+// func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
+// 	log.Warn("StatueUpdate", "blockRoot", blockRoot, "parentRoot", parentRoot, "coreDestructs", coreDestructs, "coreAccounts", coreAccounts, "coreStorage", coreStorage, "coreCode", coreCode)
+// 	m := map[string]struct{}{
+// 		"StateUpdate":struct{}{},
+// 	}
+// 	hookChan <- m
+// }
 
 // core/vm we have code in core/vm but not hooks
 

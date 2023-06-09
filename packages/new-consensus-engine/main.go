@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"context"
 	"math/big"
 	"time"
@@ -11,14 +12,14 @@ import (
 	// "github.com/openrelayxyz/plugeth-utils/restricted/types"
 )
 
-type engineService struct {
-	backend core.Backend
-	stack core.Node
-}
+// type engineService struct {
+// 	backend core.Backend
+// 	stack core.Node
+// }
 
 
 var errs chan error = make(chan error)
-var hookChan chan map[string]struct{} = make(chan map[string]struct{})
+// var hookChan chan map[string]struct{} = make(chan map[string]struct{})
 
 func HookTester() {
 
@@ -38,6 +39,8 @@ func HookTester() {
 	// log.Error("inside of hooktester")
 	
 	blockFactory()
+	// time.Sleep(2 * time.Second)
+	txContracts()
 	log.Error("called block factory")
 
 
@@ -119,9 +122,10 @@ func HookTester() {
 			}
 		}
 	}()
+	
 
-	time.Sleep(2 * time.Second)
-	txContracts()
+	// time.Sleep(2 * time.Second)
+	// txContracts()
 }
 
 type TransactionArgs struct {
@@ -138,9 +142,12 @@ type TransactionArgs struct {
 var t0 core.Hash
 var t1 core.Hash
 var t2 core.Hash
+var t3 core.Hash
 var coinBase *core.Address
 
 func blockFactory() {
+
+	log.Error("BLOCK FACTORY")
 
 	cl := apis[0].Service.(*engineService).stack
 	client, err := cl.Attach()
@@ -154,6 +161,7 @@ func blockFactory() {
 		errs <- err
 		log.Error("failed to call method eth_coinbase", "err", err)
 	}
+	log.Info("THIS IS THE CB", "coinbase", coinBase)
 
 	var peerCount hexutil.Uint64
 	for peerCount == 0 {
@@ -177,7 +185,7 @@ func blockFactory() {
 	
 	err = client.Call(&t0, "eth_sendTransaction", tx0_params)
 	if err != nil {
-		log.Error("failed to call method eth_sendTransaction", "err", err)
+		log.Error("miner to miner transfer failed", "err", err)
 	}
 	log.Error("this is the return value for eth_sendTransaction zero", "tx0", t0)
 
@@ -218,29 +226,45 @@ func txContracts() {
 	cl := apis[0].Service.(*engineService).stack
 	client, err := cl.Attach()
 	if err != nil {
-		errs <- err
 		log.Error("Error connecting with client block factory")
 	}
 
 	arg0 := map[string]interface{}{
-		// "input": "0x60006000fd",
-		"input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+		"input": "0x60018080600053f3",
+		// "input": "0x608060405234801561001057600080fd5b5061011a806100206000396000f3fe608060405234801561001057600080fd5b50600436106100375760003560e01c806360fe47b11461003c5780636d4ce63c1461005d57610037565b600080fd5b61004561007e565b60405161005291906100c5565b60405180910390f35b61007c6004803603602081101561007a57600080fd5b50356100c2565b6040516020018083838082843780820191505050505b565b005b6100946100c4565b60405161005291906100bf565b6100d1565b60405180910390f35b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663a9059cbb60e11b815260040161010060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff16146101e557600080fd5b60008060009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663e7ba30df6040518163ffffffff1660e01b8152600401600060405180830381600087803b1580156101ae57600080fd5b505af11580156101c2573d6000803e3d6000fd5b50505050505050565b6000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1681565b6000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff161461029157600080fd5b6000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff1663fdacd5766040518163ffffffff1660e01b8152600401600060405180830381600087803b1580156102f957600080fd5b505af115801561030d573d6000803e3d6000fd5b50505050505050565b6000809054906101000a900473ffffffffffffffffffffffffffffffffffffffff168156fea2646970667358221220d4f2763f3a0ae2826cc9ef37a65ff0c14d7a3aafe8d1636ff99f72e2f705413d64736f6c634300060c0033",
+		// "input": "0x3859818153F3",
+		// "input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
 		"from": coinBase,
 	}
 
-
 	time.Sleep(2 * time.Second)
-	log.Error("second client call")
 	err = client.Call(&t1, "eth_sendTransaction", arg0)
 	if err != nil {
-		errs <- err
-		log.Error("failed to call method eth_sendTransaction", "err", err)
+		log.Error("intial contract deployment failed", "err", err)
 	}
-	log.Error("this is the return value for eth_sendTransaction one", "tx1", t1)
+	log.Error("this is the return value for eth_sendTransaction T1", "tx1", t1)
+	
+	address := "4fc22727bc09f881566f467207291f101f78b7d6"
+	miner := core.HexToAddress("f2c207111cb6ef761e439e56b25c7c99ac026a01")
+	arg1 := map[string]interface{}{
+		// "input": "0x3859818153F3",
+		// "input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+		//the following address is derived from a curl to the node, should be derived from internal call. 
+		"input": fmt.Sprintf("0x62ffffff73%v60006000600060006000f1", address),
+		"from": miner,
+	}
+
+	time.Sleep(2 * time.Second)
+	err = client.Call(&t2, "eth_sendTransaction", arg1)
+	if err != nil {
+		log.Error("contract call failed", "err", err)
+	}
+	log.Error("this is the return value for eth_sendTransaction T1", "tx1", t2)
 
 	// arg1 := map[string]interface{}{
-	// 	"input": "0x60006000fd",
+	// 	// "input": "0x60006000fd",
 	// 	// "input": "0x61520873000000000000000000000000000000000000000060006000600060006000f1",
+	// 	"data": "0xa9059cbb0000000000000000000000001234567890abcdef0000000000000000000000000000000000000000000000000000000000000064",
 	// 	"from": coinBase,
 	// }
 
@@ -248,10 +272,9 @@ func txContracts() {
 	// log.Error("third client call")
 	// err = client.Call(&t2, "eth_sendTransaction", arg1)
 	// if err != nil {
-	// 	errs <- err
-	// 	log.Error("failed to call method eth_sendTransaction", "err", err)
+	// 	log.Error("failed to call new TXXXXXX", "err", err)
 	// }
-	// log.Error("this is the return value for eth_sendTransaction one", "tx1", t2)
+	// log.Error("this is the return value for the NEW TXXXXXX", "tx1", t2)
 }
 
 type TraceConfig struct {
