@@ -1,0 +1,1 @@
+./miner-node.sh & ./passive-node.sh
