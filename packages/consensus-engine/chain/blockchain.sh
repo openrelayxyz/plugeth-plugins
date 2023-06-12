@@ -34,10 +34,16 @@ if ps -p $pid > /dev/null; then
   kill $pid
 fi
 
-[ -f "passwordfile" ] && rm -f passwordfile && 
-[ -d "00/" ] && rm -rf 00/ && 
+[ -f "passwordfile" ] && rm -f passwordfile 
+[ -d "00/" ] && find 00/ -mindepth 1 -delete
 [ -d "test00/" ] && rm -rf test00/ && 
-[ -d "01/" ] && rm -rf 01/ && 
+[ -d "01/" ] && find 01/ -mindepth 1 -delete
 [ -d "test01/" ] && rm -rf test01/
+
+# [ -f "passwordfile" ] && rm -f passwordfile
+# [ -d "00/" ] && find 00/ -mindepth 1 -delete
+# [ -d "test00/" ] && rm -rf test00/
+# [ -d "01/" ] && find 01/ -mindepth 1 -delete
+# [ -d "test01/" ] && rm -rf test01/
 
 
