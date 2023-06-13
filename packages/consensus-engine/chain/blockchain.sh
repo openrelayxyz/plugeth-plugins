@@ -40,10 +40,4 @@ fi
 [ -d "01/" ] && find 01/ -mindepth 1 -delete
 [ -d "test01/" ] && rm -rf test01/
 
-# [ -f "passwordfile" ] && rm -f passwordfile
-# [ -d "00/" ] && find 00/ -mindepth 1 -delete
-# [ -d "test00/" ] && rm -rf test00/
-# [ -d "01/" ] && find 01/ -mindepth 1 -delete
-# [ -d "test01/" ] && rm -rf test01/
-
 
