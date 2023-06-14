@@ -42,7 +42,39 @@ func toRawMessages(items ...interface{}) ([]json.RawMessage, error) {
 	return result, nil
   }
 
-func OnShutdown() {
+// func OnShutdown() {
+
+// 	id, err := toRawMessages(atomic.AddInt64(&globalId, 1))
+//   	if err != nil {
+// 		log.Error("json marshalling error, id", "err", err)
+// 	}
+
+// 	call := &Call{
+// 		Version: "2.0",
+// 		ID : id[0],
+// 		Method: "plugeth_captureShutdown",
+// 		Params: []json.RawMessage{},
+// 	  }
+
+// 	backendURL := "http://127.0.0.1:9546"
+
+// 	callBytes, _ := json.Marshal(call)
+
+// 	request, _ := http.NewRequestWithContext(context.Background(), "POST", backendURL, bytes.NewReader(callBytes))
+// 	request.Header.Add("Content-Type", "application/json")
+
+// 	_, err = client.Do(request)
+// 	log.Error("WWWWWWWWWWWWWWWEEEEEEEEEEEEIIIIIIIIIIIIIIIIRRRRRRRRRRRDDDDDDDDDDDD")
+
+// 	if err != nil {
+// 		log.Error("Error calling passive node from OnShutdown", "err", err)
+// 	}
+
+// }
+
+func PreTrieCommit(node core.Hash) {
+	
+	log.Error("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
 	id, err := toRawMessages(atomic.AddInt64(&globalId, 1))
   	if err != nil {
@@ -52,7 +84,7 @@ func OnShutdown() {
 	call := &Call{
 		Version: "2.0",
 		ID : id[0],
-		Method: "plugeth_captureShutdown",
+		Method: "plugeth_capturePreTrieCommit",
 		Params: []json.RawMessage{},
 	  }
 
@@ -64,9 +96,39 @@ func OnShutdown() {
 	request.Header.Add("Content-Type", "application/json")
 
 	_, err = client.Do(request)
+	log.Error("TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT")
 
 	if err != nil {
-		log.Error("Error calling passive node", "err", err)
+		log.Error("Error calling passive node from PreTrieCommit", "err", err)
 	}
 
 }
+
+// func PostTrieCommit() {
+
+// 	id, err := toRawMessages(atomic.AddInt64(&globalId, 1))
+//   	if err != nil {
+// 		log.Error("json marshalling error, id", "err", err)
+// 	}
+
+// 	call := &Call{
+// 		Version: "2.0",
+// 		ID : id[0],
+// 		Method: "plugeth_capturePostTrieCommit",
+// 		Params: []json.RawMessage{},
+// 	  }
+
+// 	backendURL := "http://127.0.0.1:9546"
+
+// 	callBytes, _ := json.Marshal(call)
+
+// 	request, _ := http.NewRequestWithContext(context.Background(), "POST", backendURL, bytes.NewReader(callBytes))
+// 	request.Header.Add("Content-Type", "application/json")
+
+// 	_, err = client.Do(request)
+
+// 	if err != nil {
+// 		log.Error("Error calling passive node from PostTrieCommit", "err", err)
+// 	}
+
+// }

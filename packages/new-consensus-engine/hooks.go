@@ -1,8 +1,10 @@
 package main
 
 import (
+	// "context"
 	"time"
 	"math/big"
+	// "sync"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
@@ -124,24 +126,14 @@ func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) { // beyond th
 	// this injection is covered by a stand alone test: plugeth_injection_test.go in the core/ package.
 }
 
-func SetTrieFlushIntervalClone(t time.Duration) time.Duration {
+func SetTrieFlushIntervalClone(duration time.Duration) time.Duration {
+	log.Error("STFSTFSTF from within the plugin")
 	m := map[string]struct{}{
 		"SetTrieFlushIntervalClone":struct{}{},
 	}
-	log.Error("INSIDE OF TIFC TIFC TIFC TIFC")
 	hookChan <- m
-	return t
+	return duration
 }
-
-// var Interval time.Duration 
-
-// type TrieIntervalService struct {
-// }
-
-// func (service *TrieIntervalService) SetTrieFlushInterval(ctx context.Context, interval string) error {
-// 	log.Error("true flush interval", "interval", interval)
-// 	return nil
-// }
 
 // core/rawdb/
 
@@ -155,26 +147,61 @@ func AppendAncient(number uint64, hash, header, body, receipts, td []byte) {
 
 // core/state/
 
-// func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
-// 	log.Warn("StatueUpdate", "blockRoot", blockRoot, "parentRoot", parentRoot, "coreDestructs", coreDestructs, "coreAccounts", coreAccounts, "coreStorage", coreStorage, "coreCode", coreCode)
-// 	m := map[string]struct{}{
-// 		"StateUpdate":struct{}{},
-// 	}
-// 	hookChan <- m
-// }
+func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[core.Hash]struct{}, coreAccounts map[core.Hash][]byte, coreStorage map[core.Hash]map[core.Hash][]byte, coreCode map[core.Hash][]byte) {
+	// log.Warn("StatueUpdate", "blockRoot", blockRoot, "parentRoot", parentRoot, "coreDestructs", coreDestructs, "coreAccounts", coreAccounts, "coreStorage", coreStorage, "coreCode", coreCode)
+	m := map[string]struct{}{
+		"StateUpdate":struct{}{},
+	}
+	hookChan <- m
+}
 
 // core/vm we have code in core/vm but not hooks
 
 // rpc/
 
-// func GetRPCCalls(method string, id string, params string) {
+// var (
+// 	callOnce    sync.Once
+// )
+
+// func rpcHookRoutine() {
 // 	m := map[string]struct{}{
 // 		"GetRPCCalls":struct{}{},
 // 	}
-// 	log.Error("inside of get rpccallssss")
 // 	hookChan <- m
 // }
 
+func GetRPCCalls(method string, id string, params string) {
+	// callOnce.Do(rpcHookRoutine)
+	m := map[string]struct{}{
+		"GetRPCCalls":struct{}{},
+	}
+	hookChan <- m
+	
+}
+
+// trie/
+
+func PreTrieCommit(node core.Hash) {
+	log.Error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
+	// m := map[string]struct{}{
+	// 	"PreTrieCommit":struct{}{},
+	// }
+	// log.Error("CHECKKINGGGGGG")
+	// if initialized == true {
+	// 	log.Error("TTTTTTTTTTTTTTRRRRRRRRRRRRRRRUUUUUUUUUUUUUUUEEEEEEEEEEEE")
+	// 	hookChan <- m
+	// } else {
+	// 	time.Sleep(1 * time.Second)
+	// 	log.Error("WAITIIIIINNNNNNNNNNGGGGGGGGG")
+	// }
+}
+
+// func PostTrieCommit(node core.Hash) {
+// 	m := map[string]struct{}{
+// 		"PostTrieCommit":struct{}{},
+// 	}
+// 	hookChan <- m
+// }
 
 var plugins map[string]struct{} = map[string]struct{}{
 	"OnShutdown": struct{}{},
@@ -204,5 +231,7 @@ var plugins map[string]struct{} = map[string]struct{}{
 	"LiveCaptureExit": struct{}{},
 	"LiveCaptureEnd": struct{}{},
 	"LiveTracerResult": struct{}{},
+	"PreTrieCommit": struct{}{},
+	"PostTrieCommit": struct{}{},
 } 
 
