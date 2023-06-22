@@ -3,41 +3,33 @@ package main
 import (
 	"context"
 	"math/big"
-	// "strings"
 	"time"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
-	"github.com/openrelayxyz/plugeth-utils/restricted"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 )
 
-// type LiveTracerResult struct {
-// 	// backend core.Backend
-// 	// stack core.Node
-// 	CallStack []CallStack
-// 	Results   []CallStack
-// }
+type LiveTracerResult struct {
+	CallStack []CallStack
+	Results   []CallStack
+}
 
-// type CallStack struct {
-// 	Type    string         `json:"type"`
-// 	From    core.Address   `json:"from"`
-// 	To      core.Address   `json:"to"`
-// 	Value   *big.Int       `json:"value,omitempty"`
-// 	Gas     hexutil.Uint64 `json:"gas"`
-// 	GasUsed hexutil.Uint64 `json:"gasUsed"`
-// 	Input   hexutil.Bytes  `json:"input"`
-// 	Output  hexutil.Bytes  `json:"output"`
-// 	Time    string         `json:"time,omitempty"`
-// 	Calls   []CallStack    `json:"calls,omitempty"`
-// 	Results []CallStack    `json:"results,omitempty"`
-// 	Error   string         `json:"error,omitempty"`
-// }
+type CallStack struct {
+	Type    string         `json:"type"`
+	From    core.Address   `json:"from"`
+	To      core.Address   `json:"to"`
+	Value   *big.Int       `json:"value,omitempty"`
+	Gas     hexutil.Uint64 `json:"gas"`
+	GasUsed hexutil.Uint64 `json:"gasUsed"`
+	Input   hexutil.Bytes  `json:"input"`
+	Output  hexutil.Bytes  `json:"output"`
+	Time    string         `json:"time,omitempty"`
+	Calls   []CallStack    `json:"calls,omitempty"`
+	Results []CallStack    `json:"results,omitempty"`
+	Error   string         `json:"error,omitempty"`
+}
 
-// func (t *LiveTracerResult) TestLiveTracer(ctx context.Context) string {
-// 	return "testLiveTracer"
-// }
-
-func (t *LiveTracerResult) TestLiveTracer(ctx context.Context) (<-chan []CallStack, error) {
+func (t *LiveTracerResult) TraceBlock(ctx context.Context) (<-chan []CallStack, error) {
 	subch := make(chan []CallStack, 1000)
 	rtrnch := make(chan []CallStack, 1000)
 	go func() {
@@ -121,10 +113,11 @@ func (r *LiveTracerResult) CaptureState(pc uint64, op core.OpCode, gas, cost uin
 }
 
 func (r *LiveTracerResult) CaptureFault(pc uint64, op core.OpCode, gas, cost uint64, scope core.ScopeContext, depth int, err error) {
-	m := map[string]struct{}{
-		"LiveCaptureFault":struct{}{},
-	}
-	hookChan <- m
+	// this method is not covered by tests at this time
+	// m := map[string]struct{}{
+	// 	"LiveCaptureFault":struct{}{},
+	// }
+	// hookChan <- m
 }
 
 func (r *LiveTracerResult) CaptureEnd(output []byte, gasUsed uint64, t time.Duration, err error) {
@@ -138,39 +131,27 @@ func (r *LiveTracerResult) CaptureEnd(output []byte, gasUsed uint64, t time.Dura
 }
 
 func (r *LiveTracerResult) CaptureEnter(typ core.OpCode, from core.Address, to core.Address, input []byte, gas uint64, value *big.Int) {
-	m := map[string]struct{}{
-		"LiveCaptureEnter":struct{}{},
-	}
-	hookChan <- m
-	r.CallStack = append(r.CallStack, CallStack{
-		Type:  restricted.OpCode(typ).String(),
-		From:  from,
-		To:    to,
-		Input: hexutil.Bytes(input),
-		Gas:   hexutil.Uint64(gas),
-		Calls: []CallStack{},
-	})
+	// this method is not covered by tests at this time
+	// m := map[string]struct{}{
+	// 	"LiveCaptureEnter":struct{}{},
+	// }
+	// hookChan <- m
 }
 
 func (r *LiveTracerResult) CaptureExit(output []byte, gasUsed uint64, err error) {
-	m := map[string]struct{}{
-		"LiveCaptureExit":struct{}{},
-	}
-	hookChan <- m
-	if len(r.CallStack) > 1 {
-		returnCall := r.CallStack[len(r.CallStack)-1]
-		returnCall.GasUsed = hexutil.Uint64(gasUsed)
-		returnCall.Output = output
-		r.CallStack[len(r.CallStack)-2].Calls = append(r.CallStack[len(r.CallStack)-2].Calls, returnCall)
-		r.CallStack = r.CallStack[:len(r.CallStack)-1]
-	}
+	// this method is not covered by tests at this time
+	// m := map[string]struct{}{
+	// 	"LiveCaptureExit":struct{}{},
+	// }
+	// hookChan <- m
 }
 
 func (r *LiveTracerResult) Result() (interface{}, error) {
-	m := map[string]struct{}{
-		"LiveTracerResult":struct{}{},
-	}
-	hookChan <- m
+	// this method is not covered by tests at this time
+	// m := map[string]struct{}{
+	// 	"LiveTracerResult":struct{}{},
+	// }
+	// hookChan <- m
 	return "", nil
 }
 

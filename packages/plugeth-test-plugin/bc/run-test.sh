@@ -1,15 +1,15 @@
-[ -f "passwordfile" ] && rm passwordfile 
-[ -d "00/" ] && rm -r 00/
-[ -d "test00/" ] && rm -r test00/ 
-[ -d "01/" ] && rm -r 01/
-[ -d "test01/" ] && rm -r test01/ 
-[ -d "02/" ] && rm -r 02/
-[ -d "test02/" ] && rm -r test02/
+[ -f "passwordfile" ] && rm -f passwordfile 
+[ -d "00/" ] && rm -rf 00/
+[ -d "test00/" ] && rm -rf test00/ 
+[ -d "01/" ] && rm -rf 01/
+[ -d "test01/" ] && rm -rf test01/ 
+[ -d "02/" ] && rm -rf 02/
+[ -d "test02/" ] && rm -rf test02/
 
 mkdir -p test00 test01 test02 00/keystore 01/keystore 02/keystore  00/geth 01/geth 02/geth  00/plugins 01/plugins 02/plugins 
 
 
-cp ../engine.go ../miner.go test00/ 
+cp ../engine.go test00/ 
 cp ../engine.go ../main.go ../hooks.go ../tracer.go ../live_tracer.go  test01/
 cp ../engine.go ../shutdown.go test02/
 cd test00/ 
@@ -42,7 +42,7 @@ pid0=$!
 
 sleep 1
 # passive node
-$GETH --cache.preimages --config config01.toml --authrpc.port 8553 --port 64481 --verbosity=1 --syncmode=full --nodiscover --networkid=6448 --datadir=./01/ --unlock 4204477bf7fce868e761caaba991ffc607717dbf --miner.etherbase 4204477bf7fce868e761caaba991ffc607717dbf --password passwordfile --ws --ws.port 8546 --ws.api eth,admin --http --http.api eth,debug,net --http.port 9546 --allow-insecure-unlock &
+$GETH --cache.preimages --config config01.toml --authrpc.port 8553 --port 64481 --verbosity=3 --syncmode=full --nodiscover --networkid=6448 --datadir=./01/ --unlock 4204477bf7fce868e761caaba991ffc607717dbf --miner.etherbase 4204477bf7fce868e761caaba991ffc607717dbf --password passwordfile --ws --ws.port 8546 --ws.api eth,admin --http --http.api eth,debug,net --http.port 9546 --allow-insecure-unlock &
 
 sleep 1 
 
@@ -56,18 +56,15 @@ if ps -p $pid1 > /dev/null; then
   kill $pid1
 fi
 
-# sleep 260
-sleep 280
+sleep 255
 
 if ps -p $pid0 > /dev/null; then
   kill $pid0
 fi
 
-[ -f "passwordfile" ] && rm -f passwordfile 
-[ -d "00/" ] && find 00/ -mindepth 1 -delete
-[ -d "test00/" ] && rm -rf test00/ 
-[ -d "01/" ] && find 01/ -mindepth 1 -delete
-[ -d "test01/" ] && rm -rf test01/ 
-[ -d "02/" ] && find 02/ -mindepth 1 -delete
-[ -d "test02/" ] && rm -rf test02/
+wait
+
+rm -f passwordfile
+rm -rf 00/ 01/ 02/ test00/ test01/ test02/
+
 

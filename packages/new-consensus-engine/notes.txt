@@ -1,6 +1,0 @@
-The test plugin 
-
-Seperate out the consensus engine into its own seperate plugin. the test plugin will then become a seperate plugin that utilizes the same functionality. The stand alone consensus engine plugin will need some
-sample functionality, perhaps and rpc call in order to demonstrate its capabilities. 
-
-Create plugin_hook_test.go files in the plugin directories which will call out to the injections which arent already covered by the test.  

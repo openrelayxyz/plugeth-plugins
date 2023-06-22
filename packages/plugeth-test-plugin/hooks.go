@@ -1,57 +1,22 @@
 package main
 
 import (
-	// "context"
 	"time"
 	"math/big"
-	// "sync"
+	"sync"
 	
 	"github.com/openrelayxyz/plugeth-utils/core"
-	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	
 )
 
-// cmd/geth/
-
 var apis []core.API
-
-// var hookChan chan map[string]struct{} = make(chan map[string]struct{})
-
-type LiveTracerResult struct {
-	// backend core.Backend
-	// stack core.Node
-	CallStack []CallStack
-	Results   []CallStack
-}
 
 type engineService struct {
 	backend core.Backend
 	stack core.Node
 }
 
-func (e *engineService) Test() {
-	log.Info("")
-}
-
-func (e *LiveTracerResult) Test() {
-	log.Info("")
-}
-
-
-type CallStack struct {
-	Type    string         `json:"type"`
-	From    core.Address   `json:"from"`
-	To      core.Address   `json:"to"`
-	Value   *big.Int       `json:"value,omitempty"`
-	Gas     hexutil.Uint64 `json:"gas"`
-	GasUsed hexutil.Uint64 `json:"gasUsed"`
-	Input   hexutil.Bytes  `json:"input"`
-	Output  hexutil.Bytes  `json:"output"`
-	Time    string         `json:"time,omitempty"`
-	Calls   []CallStack    `json:"calls,omitempty"`
-	Results []CallStack    `json:"results,omitempty"`
-	Error   string         `json:"error,omitempty"`
-}
+// cmd/geth/
 
 func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	// GetAPIs is covered by virtue of the plugeth_captureShutdown method functioning.
@@ -73,7 +38,7 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 }
 
 func OnShutdown(){
-	// this injection is covered by its own test in this package. See documentation for details. 
+	// this injection is covered by another test in this package. See documentation for details. 
 }
 
 // core/
@@ -127,7 +92,6 @@ func Reorg(commonBlock core.Hash, oldChain, newChain []core.Hash) { // beyond th
 }
 
 func SetTrieFlushIntervalClone(duration time.Duration) time.Duration {
-	log.Error("STFSTFSTF from within the plugin")
 	m := map[string]struct{}{
 		"SetTrieFlushIntervalClone":struct{}{},
 	}
@@ -155,53 +119,38 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, coreDestructs map[co
 	hookChan <- m
 }
 
-// core/vm we have code in core/vm but not hooks
-
 // rpc/
 
-// var (
-// 	callOnce    sync.Once
-// )
-
-// func rpcHookRoutine() {
-// 	m := map[string]struct{}{
-// 		"GetRPCCalls":struct{}{},
-// 	}
-// 	hookChan <- m
-// }
 
 func GetRPCCalls(method string, id string, params string) {
-	// callOnce.Do(rpcHookRoutine)
 	m := map[string]struct{}{
 		"GetRPCCalls":struct{}{},
 	}
 	hookChan <- m
-	
+}
+
+var once sync.Once
+
+func RPCSubscriptionTest() {
+	go func() {
+		once.Do(func() {
+			m := map[string]struct{}{
+			"RPCSubscriptionTest":struct{}{},
+			}
+			hookChan <- m
+		})
+	}()
 }
 
 // trie/
 
 func PreTrieCommit(node core.Hash) {
-	log.Error("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX")
-	// m := map[string]struct{}{
-	// 	"PreTrieCommit":struct{}{},
-	// }
-	// log.Error("CHECKKINGGGGGG")
-	// if initialized == true {
-	// 	log.Error("TTTTTTTTTTTTTTRRRRRRRRRRRRRRRUUUUUUUUUUUUUUUEEEEEEEEEEEE")
-	// 	hookChan <- m
-	// } else {
-	// 	time.Sleep(1 * time.Second)
-	// 	log.Error("WAITIIIIINNNNNNNNNNGGGGGGGGG")
-	// }
+	// this injection is covered by another test in this package. See documentation for details.
 }
 
-// func PostTrieCommit(node core.Hash) {
-// 	m := map[string]struct{}{
-// 		"PostTrieCommit":struct{}{},
-// 	}
-// 	hookChan <- m
-// }
+func PostTrieCommit(node core.Hash) {
+	// this injection is covered by another test in this package. See documentation for details.
+}
 
 var plugins map[string]struct{} = map[string]struct{}{
 	"OnShutdown": struct{}{},
@@ -220,17 +169,18 @@ var plugins map[string]struct{} = map[string]struct{}{
 	"StandardCaptureEnd": struct{}{},
 	"StandardTracerResult": struct{}{},
 	"GetRPCCalls": struct{}{},
+	"RPCSubscriptionTest": struct{}{},
 	"LivePreProcessBlock": struct{}{},
 	"LivePreProcessTransaction": struct{}{},
 	"LivePostProcessTransaction": struct{}{},
 	"LivePostProcessBlock": struct{}{},
 	"LiveCaptureStart": struct{}{},
 	"LiveCaptureState": struct{}{},
-	"LiveCaptureFault": struct{}{},
-	"LiveCaptureEnter": struct{}{},
-	"LiveCaptureExit": struct{}{},
+	// "LiveCaptureFault": struct{}{},
+	// "LiveCaptureEnter": struct{}{},
+	// "LiveCaptureExit": struct{}{},
+	// "LiveTracerResult": struct{}{},
 	"LiveCaptureEnd": struct{}{},
-	"LiveTracerResult": struct{}{},
 	"PreTrieCommit": struct{}{},
 	"PostTrieCommit": struct{}{},
 } 
