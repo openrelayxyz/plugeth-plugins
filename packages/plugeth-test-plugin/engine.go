@@ -21,7 +21,6 @@ var (
 var httpApiFlagName = "http.api"
 
 func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
-	// log.Error("inside initalize engine")
 	pl = loader
 	events = pl.GetFeed()
 	log = logger
@@ -68,7 +67,6 @@ func (e *engine) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction,uncles []*types.Header, withdrawals []*types.Withdrawal) {
 }
 func (e *engine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, withdrawals []*types.Withdrawal) (*types.Block, error) {
-	log.Error("inside of FinalizeAndAssemble")
 	header.Root = state.IntermediateRoot(false)
 	hasher := hasher.NewStackTrie(nil)
 	block := types.NewBlockWithWithdrawals(header, txs, uncles, receipts, withdrawals, hasher)
