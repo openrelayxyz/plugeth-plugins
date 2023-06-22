@@ -151,10 +151,6 @@ func txFactory() {
 		time.Sleep(100 * time.Millisecond)
 	} 
 
-	// v := (*hexutil.Big)(big.NewInt(1))
-
-	// unlockedAccount := core.HexToAddress("4204477bf7fce868e761caaba991ffc607717dbf")
-
 	tx0_params := map[string]interface{}{
 		"from": coinBase,
 		"to": coinBase,

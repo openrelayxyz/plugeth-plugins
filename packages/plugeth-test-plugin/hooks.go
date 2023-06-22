@@ -37,9 +37,9 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	return apis
 }
 
-func OnShutdown(){
+// func OnShutdown(){
 	// this injection is covered by another test in this package. See documentation for details. 
-}
+// }
 
 // core/
 
@@ -144,13 +144,13 @@ func RPCSubscriptionTest() {
 
 // trie/
 
-func PreTrieCommit(node core.Hash) {
+// func PreTrieCommit(node core.Hash) {
 	// this injection is covered by another test in this package. See documentation for details.
-}
+// }
 
-func PostTrieCommit(node core.Hash) {
+// func PostTrieCommit(node core.Hash) {
 	// this injection is covered by another test in this package. See documentation for details.
-}
+// }
 
 var plugins map[string]struct{} = map[string]struct{}{
 	"OnShutdown": struct{}{},
