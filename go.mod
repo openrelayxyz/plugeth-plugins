@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
-	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c
+	github.com/holiman/uint256 v1.2.0
 	github.com/openrelayxyz/plugeth-utils v1.2.0
 )
 
