@@ -98,6 +98,7 @@ func (e *engine) Close() error {
 	return nil
 }
 
-func CreateEngine(core.Node, []string, bool, restricted.Database) consensus.Engine {
+func CreateEngine() consensus.Engine {
+	log.Error("inside of plugin side create engine")
 	return &engine{}
 }

@@ -20,8 +20,8 @@ cp nodekey01 01/geth/nodekey
 
 echo -n "supersecretpassword" > passwordfile
 
-$GETH init --datadir=./00 genesis.json
-$GETH init --datadir=./01 genesis.json
+$GETH init --datadir=./00 foundation-genesis.json
+$GETH init --datadir=./01 foundation-genesis.json
 
 $GETH --cache.preimages --config config00.toml --authrpc.port 8552 --port 64480 --verbosity 0 --nodiscover --networkid=6448 --datadir=./00/ --mine --miner.etherbase f2c207111cb6ef761e439e56b25c7c99ac026a01 --unlock f2c207111cb6ef761e439e56b25c7c99ac026a01 --http --http.api eth,debug,net --http.port 9545 --password passwordfile --allow-insecure-unlock &
 pid=$!
@@ -34,10 +34,7 @@ if ps -p $pid > /dev/null; then
   kill $pid
 fi
 
-[ -f "passwordfile" ] && rm -f passwordfile 
-[ -d "00/" ] && find 00/ -mindepth 1 -delete
-[ -d "test00/" ] && rm -rf test00/ && 
-[ -d "01/" ] && find 01/ -mindepth 1 -delete
-[ -d "test01/" ] && rm -rf test01/
+sleep 1
 
-
+rm -rf 00 01 test00 test01
+rm -f passwordfile
