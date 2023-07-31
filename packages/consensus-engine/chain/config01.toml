@@ -28,20 +28,7 @@ GasFloor = 0
 GasCeil = 30000000
 GasPrice = 1000000000
 Recommit = 2000000000
-Noverify = false
 NewPayloadTimeout = 2000000000
-
-[Eth.Ethash]
-CacheDir = "ethash"
-CachesInMem = 2
-CachesOnDisk = 3
-CachesLockMmap = false
-DatasetDir = "/home/aroberts/.ethash"
-DatasetsInMem = 1
-DatasetsOnDisk = 2
-DatasetsLockMmap = false
-PowMode = 0
-NotifyFull = false
 
 [Eth.TxPool]
 Locals = []
