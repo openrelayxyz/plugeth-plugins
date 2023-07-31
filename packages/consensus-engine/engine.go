@@ -7,6 +7,7 @@ import(
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
+	"github.com/openrelayxyz/plugeth-utils/restricted/params"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hasher"
 	"github.com/openrelayxyz/plugeth-utils/restricted/consensus"
 )
@@ -61,6 +62,10 @@ func (e *engine) VerifyUncles(chain consensus.ChainReader, block *types.Block) e
 	return nil
 }
 func (e *engine) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
+	if header.BaseFee == nil {
+		header.BaseFee = new(big.Int)
+
+	}
 	header.Difficulty = new(big.Int).SetUint64(123456789)
 	header.UncleHash = core.HexToHash("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
 	return nil
@@ -68,6 +73,10 @@ func (e *engine) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction,uncles []*types.Header, withdrawals []*types.Withdrawal) {
 }
 func (e *engine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, withdrawals []*types.Withdrawal) (*types.Block, error) {
+	if header.BaseFee == nil {
+		header.BaseFee = new(big.Int)
+
+	}
 	header.Root = state.IntermediateRoot(false)
 	hasher := hasher.NewStackTrie(nil)
 	block := types.NewBlockWithWithdrawals(header, txs, uncles, receipts, withdrawals, hasher)
@@ -98,6 +107,6 @@ func (e *engine) Close() error {
 	return nil
 }
 
-func CreateEngine(core.Node, []string, bool, restricted.Database) consensus.Engine {
+func CreateEngine(chainConfig *params.ChainConfig, db restricted.Database) consensus.Engine {
 	return &engine{}
 }
