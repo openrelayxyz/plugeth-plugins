@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 )
@@ -17,7 +18,6 @@ var httpApiFlagName = "http.api"
 
 func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
-	log.Error("inside initalize")
 	v := ctx.String(httpApiFlagName)
 	if v != "" {
 		ctx.Set(httpApiFlagName, v+",plugeth")
@@ -38,6 +38,33 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	}
 }
 
+func DefaultDataDir(path string) string {
+	return filepath.Join(path, "classic")
+}
+
+func SetBootstrapNodes() []string {
+	var classicBootnodes = []string{} // this will need to be modified?
+	return classicBootnodes
+}
+
+func SetNetworkId() *uint64 {
+	var networkId *uint64
+	classicNetworkId := uint64(1)
+	networkId = &classicNetworkId
+	return networkId 
+}
+
+func SetETHDiscoveryURLs() []string {
+	var result []string
+	return result
+}
+
+func SetSnapDiscoveryURLs() []string {
+	var result []string
+	return result
+}
+
+
 func (service *ClassicService) Test(ctx context.Context) string {
-	return "oh me oh me oh my"
+	return "total classic"
 }
