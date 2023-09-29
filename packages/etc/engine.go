@@ -6,7 +6,7 @@ import (
 	"math/rand"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
-	"github.com/openrelayxyz/plugeth-utils/restricted/consensus"
+	// "github.com/openrelayxyz/plugeth-utils/restricted/consensus"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 )
 

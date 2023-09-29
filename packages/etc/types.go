@@ -18,6 +18,7 @@ package main
 
 import (
 	"math/big"
+	"errors"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
@@ -443,3 +444,19 @@ var big1 = new(big.Int).SetInt64(1)
 var big2 = new(big.Int).SetInt64(2)
 
 var bigMinus99 = big.NewInt(-99)
+
+// DAOForkBlockExtra is the block header extra-data field to set for the DAO fork
+// point and a number of consecutive blocks to allow fast/light syncers to correctly
+// pick the side they want  ("dao-hard-fork").
+var DAOForkBlockExtra = FromHex("0x64616f2d686172642d666f726b")
+
+// DAOForkExtraRange is the number of consecutive blocks from the DAO fork point
+// to override the extra-data in to prevent no-fork attacks.
+var DAOForkExtraRange = big.NewInt(10)
+
+// DAORefundContract is the address of the refund contract to send DAO balances to.
+var DAORefundContract = core.HexToAddress("0xbf4ed7b27f1d666546e30d74d50d173d20bca754")
+
+var ErrBadProDAOExtra = errors.New("bad DAO pro-fork extra-data")
+
+var ExpDiffPeriod *big.Int = big.NewInt(100000)

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"errors"
 	"math/big"
+	"bytes"
+	"encoding/hex"
 
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 )
@@ -44,11 +46,11 @@ func VerifyDAOHeaderExtraData(config ChainConfigurator, header *types.Header) er
 	}
 	daoForkBlockB := new(big.Int).SetUint64(*daoForkBlock)
 	// Make sure the block is within the fork's modified extra-data range
-	limit := new(big.Int).Add(daoForkBlockB, vars.DAOForkExtraRange)
+	limit := new(big.Int).Add(daoForkBlockB, DAOForkExtraRange)
 	if header.Number.Cmp(daoForkBlockB) < 0 || header.Number.Cmp(limit) >= 0 {
 		return nil
 	}
-	if !bytes.Equal(header.Extra, vars.DAOForkBlockExtra) {
+	if !bytes.Equal(header.Extra, DAOForkBlockExtra) {
 		return ErrBadProDAOExtra
 	}
 	return nil
@@ -86,6 +88,29 @@ func VerifyDAOHeaderExtraData(config ChainConfigurator, header *types.Header) er
 	// }
 	// // All ok, header has the same extra-data we expect
 	// return nil
+}
+
+// FromHex returns the bytes represented by the hexadecimal string s.
+// s may be prefixed with "0x".
+func FromHex(s string) []byte {
+	if has0xPrefix(s) {
+		s = s[2:]
+	}
+	if len(s)%2 == 1 {
+		s = "0" + s
+	}
+	return Hex2Bytes(s)
+}
+
+// Hex2Bytes returns the bytes represented by the hexadecimal string str.
+func Hex2Bytes(str string) []byte {
+	h, _ := hex.DecodeString(str)
+	return h
+}
+
+// has0xPrefix validates str begins with '0x' or '0X'.
+func has0xPrefix(str string) bool {
+	return len(str) >= 2 && str[0] == '0' && (str[1] == 'x' || str[1] == 'X')
 }
 
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
@@ -245,7 +270,7 @@ func CalcDifficulty(config ChainConfigurator, time uint64, parent *types.Header)
 	//   2^(( periodRef // EDP) - 2)
 	//
 	x := new(big.Int)
-	x.Div(exPeriodRef, params.ExpDiffPeriod) // (periodRef // EDP)
+	x.Div(exPeriodRef, ExpDiffPeriod) // (periodRef // EDP)
 	if x.Cmp(big1) > 0 {                     // if result large enough (not in algo explicitly)
 		x.Sub(x, big2)      // - 2
 		x.Exp(big2, x, nil) // 2^
@@ -272,4 +297,15 @@ func VerifyGaslimit(parentGasLimit, headerGasLimit uint64) error {
 		return errors.New("invalid gas limit below 5000")
 	}
 	return nil
+}
+
+func ecip1010Explosion(config ChainConfigurator, next *big.Int, exPeriodRef *big.Int) {
+	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1010.md
+
+	if next.Uint64() < *config.GetEthashECIP1010ContinueTransition() {
+		exPeriodRef.SetUint64(*config.GetEthashECIP1010PauseTransition())
+	} else {
+		length := new(big.Int).SetUint64(*config.GetEthashECIP1010ContinueTransition() - *config.GetEthashECIP1010PauseTransition())
+		exPeriodRef.Sub(exPeriodRef, length)
+	}
 }
