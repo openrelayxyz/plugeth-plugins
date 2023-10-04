@@ -16,8 +16,8 @@ import (
 type Ethash struct {
 	config Config
 
-	// caches   *lru[*cache]   // In memory caches to avoid regenerating too often
-	// datasets *lru[*dataset] // In memory datasets to avoid regenerating too often
+	caches   *lru[*cache]   // In memory caches to avoid regenerating too often
+	datasets *lru[*dataset] // In memory datasets to avoid regenerating too often
 
 	// Mining related fields
 	rand     *rand.Rand    // Properly seeded random source for nonces

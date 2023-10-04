@@ -19,9 +19,32 @@ package main
 import (
 	"math/big"
 	"errors"
+	"sync"
+	"sync/atomic"
+	"os"
+
+	"github.com/edsrzf/mmap-go"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
+)
+
+var (
+	// algorithmRevision is the data structure version used for file naming.
+	algorithmRevision = 23
+
+	// dumpMagic is a dataset dump header to sanity check a data dump.
+	dumpMagic = []uint32{0xbaddcafe, 0xfee1dead}
+
+	ErrInvalidDumpMagic = errors.New("invalid dump magic")
+)
+
+// Lengths of hashes and addresses in bytes.
+const (
+	// HashLength is the expected length of the hash
+	HashLength = 32
+	// AddressLength is the expected length of the address
+	AddressLength = 20
 )
 
 // This file holds the Configurator interfaces.
@@ -445,6 +468,9 @@ var big2 = new(big.Int).SetInt64(2)
 
 var bigMinus99 = big.NewInt(-99)
 
+// two256 is a big integer representing 2^256
+var two256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
+
 // DAOForkBlockExtra is the block header extra-data field to set for the DAO fork
 // point and a number of consecutive blocks to allow fast/light syncers to correctly
 // pick the side they want  ("dao-hard-fork").
@@ -460,3 +486,56 @@ var DAORefundContract = core.HexToAddress("0xbf4ed7b27f1d666546e30d74d50d173d20b
 var ErrBadProDAOExtra = errors.New("bad DAO pro-fork extra-data")
 
 var ExpDiffPeriod *big.Int = big.NewInt(100000)
+
+const (
+	datasetInitBytes    = 1 << 30 // Bytes in dataset at genesis
+	datasetGrowthBytes  = 1 << 23 // Dataset growth per epoch
+	cacheInitBytes      = 1 << 24 // Bytes in cache at genesis
+	cacheGrowthBytes    = 1 << 17 // Cache growth per epoch
+	epochLengthDefault  = 30000   // Default epoch length (blocks per epoch)
+	epochLengthECIP1099 = 60000   // Blocks per epoch if ECIP-1099 is activated
+	mixBytes            = 128     // Width of mix
+	hashBytes           = 64      // Hash length in bytes
+	hashWords           = 16      // Number of 32 bit ints in a hash
+	datasetParents      = 256     // Number of parents of each dataset element
+	cacheRounds         = 3       // Number of rounds in cache production
+	loopAccesses        = 64      // Number of accesses in hashimoto loop
+	maxEpoch            = 2048    // Max Epoch for included tables
+)
+
+// lru tracks caches or datasets by their last use time, keeping at most N of them.
+type lru[T cacheOrDataset] struct {
+	what string
+	new  func(epoch uint64, epochLength uint64) T
+	mu   sync.Mutex
+	// Items are kept in a LRU cache, but there is a special case:
+	// We always keep an item for (highest seen epoch) + 1 as the 'future item'.
+	cache      BasicLRU[uint64, T]
+	future     uint64
+	futureItem T
+}
+
+type cacheOrDataset interface {
+	*cache | *dataset
+}
+
+// cache wraps an ethash cache with some metadata to allow easier concurrent use.
+type cache struct {
+	epoch       uint64    // Epoch for which this cache is relevant
+	epochLength uint64    // Epoch length (ECIP-1099)
+	dump        *os.File  // File descriptor of the memory mapped cache
+	mmap        mmap.MMap // Memory map itself to unmap before releasing
+	cache       []uint32  // The actual cache data content (may be memory mapped)
+	once        sync.Once // Ensures the cache is generated only once
+}
+
+// dataset wraps an ethash dataset with some metadata to allow easier concurrent use.
+type dataset struct {
+	epoch       uint64      // Epoch for which this cache is relevant
+	epochLength uint64      // Epoch length (ECIP-1099)
+	dump        *os.File    // File descriptor of the memory mapped cache
+	mmap        mmap.MMap   // Memory map itself to unmap before releasing
+	dataset     []uint32    // The actual cache data content
+	once        sync.Once   // Ensures the cache is generated only once
+	done        atomic.Bool // Atomic flag to determine generation status
+}
