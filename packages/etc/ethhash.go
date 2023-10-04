@@ -533,3 +533,71 @@ func (d *dataset) generate(dir string, limit int, lock bool, test bool) {
 		}
 	})
 }
+
+func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
+	// Extract some data from the header
+	var (
+		header  = block.Header()
+		hash    = ethash.SealHash(header).Bytes()
+		target  = new(big.Int).Div(two256, header.Difficulty)
+		number  = header.Number.Uint64()
+		dataset = ethash.dataset(number, false)
+	)
+	// Start generating random nonces until we abort or find a good one
+	var (
+		attempts  = int64(0)
+		nonce     = seed
+		powBuffer = new(big.Int)
+	)
+	// logger := ethash.config.Log.New("miner", id)
+	// logger.Trace("Started ethash search for new nonces", "seed", seed)
+	// TODO PM talk to AR regarding these log.New methods
+search:
+	for {
+		select {
+		case <-abort:
+			// Mining terminated, update stats and abort
+			log.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
+			// ethash.hashrate.Mark(attempts)
+			break search
+
+		default:
+			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
+			attempts++
+			if (attempts % (1 << 15)) == 0 {
+				// ethash.hashrate.Mark(attempts)
+				attempts = 0
+			}
+			// Compute the PoW value of this nonce
+			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
+			if powBuffer.SetBytes(result).Cmp(target) <= 0 {
+				// Correct nonce found, create a new header with it
+				header = types.CopyHeader(header)
+				header.Nonce = types.EncodeNonce(nonce)
+				header.MixDigest = core.BytesToHash(digest)
+
+				// Seal and return a block (if still needed)
+				select {
+				case found <- block.WithSeal(header):
+					log.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
+				case <-abort:
+					log.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce)
+				}
+				break search
+			}
+			nonce++
+		}
+	}
+	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
+	// during sealing so it's not unmapped while being read.
+	runtime.KeepAlive(dataset)
+}
+
+// Threads returns the number of mining threads currently enabled. This doesn't
+// necessarily mean that mining is running!
+func (ethash *Ethash) Threads() int {
+	ethash.lock.Lock()
+	defer ethash.lock.Unlock()
+
+	return ethash.threads
+}

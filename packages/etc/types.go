@@ -17,10 +17,12 @@
 package main
 
 import (
+	"context"
 	"math/big"
 	"errors"
 	"sync"
 	"sync/atomic"
+	"time"
 	"os"
 
 	"github.com/edsrzf/mmap-go"
@@ -79,6 +81,67 @@ type ChainHeaderReader interface {
 
 	// GetTd retrieves the total difficulty from the database by hash and number.
 	GetTd(hash core.Hash, number uint64) *big.Int
+}
+
+type remoteSealer struct {
+	works        map[core.Hash]*types.Block
+	rates        map[core.Hash]hashrate
+	currentBlock *types.Block
+	currentWork  [4]string
+	notifyCtx    context.Context
+	cancelNotify context.CancelFunc // cancels all notification requests
+	reqWG        sync.WaitGroup     // tracks notification request goroutines
+
+	ethash       *Ethash
+	noverify     bool
+	notifyURLs   []string
+	results      chan<- *types.Block
+	workCh       chan *sealTask   // Notification channel to push new work and relative result channel to remote sealer
+	fetchWorkCh  chan *sealWork   // Channel used for remote sealer to fetch mining work
+	submitWorkCh chan *mineResult // Channel used for remote sealer to submit their mining result
+	fetchRateCh  chan chan uint64 // Channel used to gather submitted hash rate for local or remote sealer.
+	submitRateCh chan *hashrate   // Channel used for remote sealer to submit their mining hashrate
+	requestExit  chan struct{}
+	exitCh       chan struct{}
+}
+
+// hashrate wraps the hash rate submitted by the remote sealer.
+type hashrate struct {
+	id   core.Hash
+	ping time.Time
+	rate uint64
+
+	done chan struct{}
+}
+
+// sealTask wraps a seal block with relative result channel for remote sealer thread.
+type sealTask struct {
+	block   *types.Block
+	results chan<- *types.Block
+}
+
+// sealWork wraps a seal work package for remote sealer.
+type sealWork struct {
+	errc chan error
+	res  chan [4]string
+}
+
+// mineResult wraps the pow solution parameters for the specified block.
+type mineResult struct {
+	nonce     types.BlockNonce
+	mixDigest core.Hash
+	hash      core.Hash
+
+	errc chan error
+}
+
+// ChainReader defines a small collection of methods needed to access the local
+// blockchain during header and/or uncle verification.
+type ChainReader interface {
+	ChainHeaderReader
+
+	// GetBlock retrieves a block from the database by hash and number.
+	GetBlock(hash core.Hash, number uint64) *types.Block
 }
 
 type Configurator interface {
@@ -467,6 +530,10 @@ var big1 = new(big.Int).SetInt64(1)
 var big2 = new(big.Int).SetInt64(2)
 
 var bigMinus99 = big.NewInt(-99)
+
+var DisinflationRateQuotient = big.NewInt(4)
+
+var DisinflationRateDivisor  = big.NewInt(5)
 
 // two256 is a big integer representing 2^256
 var two256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
