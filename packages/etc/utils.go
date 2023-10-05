@@ -90,17 +90,17 @@ func VerifyDAOHeaderExtraData(config ChainConfigurator, header *types.Header) er
 	// daoForkBlockB := new(big.Int).SetUint64(*daoForkBlock)
 	//
 	// // Make sure the block is within the fork's modified extra-data range
-	// limit := new(big.Int).Add(daoForkBlockB, vars.DAOForkExtraRange)
+	// limit := new(big.Int).Add(daoForkBlockB, DAOForkExtraRange)
 	// if header.Number.Cmp(daoForkBlockB) < 0 || header.Number.Cmp(limit) >= 0 {
 	//	return nil
 	// }
 	// // Depending on whether we support or oppose the fork, validate the extra-data contents
 	// if generic.AsGenericCC(config).DAOSupport() {
-	//	if !bytes.Equal(header.Extra, vars.DAOForkBlockExtra) {
+	//	if !bytes.Equal(header.Extra, DAOForkBlockExtra) {
 	//		return ErrBadProDAOExtra
 	//	}
 	// } else {
-	//	if bytes.Equal(header.Extra, vars.DAOForkBlockExtra) {
+	//	if bytes.Equal(header.Extra, DAOForkBlockExtra) {
 	//		return ErrBadNoDAOExtra
 	//	}
 	// }
@@ -849,4 +849,17 @@ func (ethash *Ethash) makePoissonFakeDelay() float64 {
 		Src:    exprand.NewSource(uint64(time.Now().UnixNano())),
 	}
 	return p.Rand()
+}
+
+// StopRemoteSealer stops the remote sealer
+func (ethash *Ethash) StopRemoteSealer() error {
+	ethash.closeOnce.Do(func() {
+		// Short circuit if the exit channel is not allocated.
+		if ethash.remote == nil {
+			return
+		}
+		close(ethash.remote.requestExit)
+		<-ethash.remote.exitCh
+	})
+	return nil
 }

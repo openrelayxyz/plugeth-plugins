@@ -10,10 +10,12 @@ import (
 	"runtime"
 	"errors"
 
+	"golang.org/x/crypto/sha3"
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	// "github.com/openrelayxyz/plugeth-utils/restricted/consensus"
+	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 	trie "github.com/openrelayxyz/plugeth-utils/restricted/hasher"
 )
@@ -354,3 +356,48 @@ func (ethash *Ethash) Seal(chain ChainHeaderReader, block *types.Block, results 
 	return nil
 }
 
+// SealHash returns the hash of a block prior to it being sealed.
+func (ethash *Ethash) SealHash(header *types.Header) (hash core.Hash) {
+	hasher := sha3.NewLegacyKeccak256()
+
+	enc := []interface{}{
+		header.ParentHash,
+		header.UncleHash,
+		header.Coinbase,
+		header.Root,
+		header.TxHash,
+		header.ReceiptHash,
+		header.Bloom,
+		header.Difficulty,
+		header.Number,
+		header.GasLimit,
+		header.GasUsed,
+		header.Time,
+		header.Extra,
+	}
+	if header.BaseFee != nil {
+		enc = append(enc, header.BaseFee)
+	}
+	if header.WithdrawalsHash != nil {
+		panic("withdrawal hash set on ethash")
+	}
+	rlp.Encode(hasher, enc)
+	hasher.Sum(hash[:0])
+	return hash
+}
+
+// CalcDifficulty is the difficulty adjustment algorithm. It returns
+// the difficulty that a new block should have when created at time
+// given the parent block's time and difficulty.
+func (ethash *Ethash) CalcDifficulty(chain ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
+	return CalcDifficulty(chain.Config(), time, parent)
+}
+
+func (e *Ethash) APIs(chain ChainHeaderReader) []core.API {
+	return []core.API{}
+}
+
+// Close closes the exit channel to notify all backend threads exiting.
+func (ethash *Ethash) Close() error {
+	return ethash.StopRemoteSealer()
+}

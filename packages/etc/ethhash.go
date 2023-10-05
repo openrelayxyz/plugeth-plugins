@@ -10,12 +10,8 @@ import (
 	"runtime"
 	"path/filepath"
 
-	"golang.org/x/crypto/sha3"
-	
 	"github.com/openrelayxyz/plugeth-utils/core"
-	// "github.com/openrelayxyz/plugeth-utils/restricted/consensus"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
-	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 )
 
 // Config are the configuration parameters of the ethash.
@@ -73,13 +69,6 @@ var (
 )
 
 var unixNow int64 = time.Now().Unix()
-
-// CalcDifficulty is the difficulty adjustment algorithm. It returns
-// the difficulty that a new block should have when created at time
-// given the parent block's time and difficulty.
-func (ethash *Ethash) CalcDifficulty(chain ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
-	return CalcDifficulty(chain.Config(), time, parent)
-}
 
 // verifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
@@ -226,36 +215,6 @@ func (ethash *Ethash) verifySeal(chain ChainHeaderReader, header *types.Header, 
 		return errInvalidPoW
 	}
 	return nil
-}
-
-// SealHash returns the hash of a block prior to it being sealed.
-func (ethash *Ethash) SealHash(header *types.Header) (hash core.Hash) {
-	hasher := sha3.NewLegacyKeccak256()
-
-	enc := []interface{}{
-		header.ParentHash,
-		header.UncleHash,
-		header.Coinbase,
-		header.Root,
-		header.TxHash,
-		header.ReceiptHash,
-		header.Bloom,
-		header.Difficulty,
-		header.Number,
-		header.GasLimit,
-		header.GasUsed,
-		header.Time,
-		header.Extra,
-	}
-	if header.BaseFee != nil {
-		enc = append(enc, header.BaseFee)
-	}
-	if header.WithdrawalsHash != nil {
-		panic("withdrawal hash set on ethash")
-	}
-	rlp.Encode(hasher, enc)
-	hasher.Sum(hash[:0])
-	return hash
 }
 
 // dataset tries to retrieve a mining dataset for the specified block number
