@@ -14,14 +14,20 @@ import (
 	mapset "github.com/deckarep/golang-set/v2"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
-	// "github.com/openrelayxyz/plugeth-utils/restricted/consensus"
+	"github.com/openrelayxyz/plugeth-utils/restricted"
+	"github.com/openrelayxyz/plugeth-utils/restricted/consensus"
+	"github.com/openrelayxyz/plugeth-utils/restricted/params"
+	trie "github.com/openrelayxyz/plugeth-utils/restricted/hasher"
 	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
-	trie "github.com/openrelayxyz/plugeth-utils/restricted/hasher"
 )
 
 // type engine struct {
 // }
+
+func CreateEngine(chainConfig *params.ChainConfig, db restricted.Database) consensus.Engine {
+	return &Ethash{}
+}
 
 type Ethash struct {
 	config Config
@@ -401,3 +407,7 @@ func (e *Ethash) APIs(chain ChainHeaderReader) []core.API {
 func (ethash *Ethash) Close() error {
 	return ethash.StopRemoteSealer()
 }
+
+// func CreateEngine(chainConfig *params.ChainConfig, db restricted.Database) consensus.Engine {
+// 	return &engine{}
+// }

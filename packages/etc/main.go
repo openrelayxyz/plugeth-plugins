@@ -29,19 +29,26 @@ type ClassicService struct {
 	stack   core.Node
 }
 
-var log core.Logger
+var (
+	pl      core.PluginLoader
+	backend restricted.Backend
+	log     core.Logger
+	events  core.Feed
+)
 
 var httpApiFlagName = "http.api"
 
-func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
+func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) { 
+	pl = loader
+	events = pl.GetFeed()
 	log = logger
 	v := ctx.String(httpApiFlagName)
 	if v != "" {
 		ctx.Set(httpApiFlagName, v+",plugeth")
 	} else {
 		ctx.Set(httpApiFlagName, "eth,net,web3,plugeth")
+		log.Info("Loaded consensus engine plugin")
 	}
-	log.Info("Loaded Ethereum classic plugin")
 }
 
 func GetAPIs(stack core.Node, backend core.Backend) []core.API {
