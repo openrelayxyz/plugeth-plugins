@@ -55,8 +55,7 @@ type Ethash struct {
 }
 
 func (ethash *Ethash) PluginConfig() *PluginConfigurator {
-	p := &PluginConfigurator{}
-	return p
+	return etc_config
 }
 
 // Author implements consensus.Engine, returning the header's coinbase as the
@@ -255,7 +254,7 @@ func (ethash *Ethash) FinalizeAndAssemble(chain consensus.ChainHeaderReader, hea
 
 
 	// Assign the final state root to header.
-	header.Root = state.IntermediateRoot(ethash.pluginConfig.IsEnabled(ethash.pluginConfig.EIP161FBlock, header.Number))
+	header.Root = state.IntermediateRoot(ethash.pluginConfig.IsEnabled(ethash.pluginConfig.GetEIP161dTransition, header.Number))
 
 	// Header seems complete, assemble into a block and return
 	return types.NewBlock(header, txs, uncles, receipts, trie.NewStackTrie(nil)), nil

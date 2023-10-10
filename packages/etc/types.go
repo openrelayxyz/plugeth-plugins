@@ -508,9 +508,6 @@ func (c ConsensusEngineT) IsUnknown() bool {
 	return c == ConsensusEngineT_Unknown
 }
 
-// Uint64BigMapEncodesHex is a map that encodes and decodes w/ JSON hex format.
-type Uint64BigMapEncodesHex map[uint64]*big.Int
-
 type BlockSealingT int
 
 const (
