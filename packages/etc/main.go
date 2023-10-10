@@ -23,6 +23,10 @@ var (
 	ClassicDNSNetwork1 string = dnsPrefixETC + "all.classic.blockd.info"
 
 	snapDiscoveryURLs []string
+
+	forkBlockIds = []uint64 {1150000, 2500000, 3000000, 5000000, 5900000, 8772000, 9573000, 10500839, 11700000, 13189133, 14525000}
+
+	forkTimeIds = []uint64{}
 )
 
 type ClassicService struct {
@@ -48,9 +52,11 @@ func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) 
 		ctx.Set(httpApiFlagName, v+",plugeth")
 	} else {
 		ctx.Set(httpApiFlagName, "eth,net,web3,plugeth")
-		log.Info("Loaded consensus engine plugin")
+		log.Info("Loaded Ethereum Classic plugin")
 	}
 }
+
+var Flags string = "classic"
 
 func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	return []core.API{
@@ -63,7 +69,11 @@ func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	}
 }
 
-func DefaultDataDir(path string) string {
+func ForkIDs() ([]uint64, []uint64) {
+	return forkBlockIds, forkTimeIds
+}
+
+func SetDefaultDataDir(path string) string {
 	return filepath.Join(path, "classic")
 }
 
@@ -94,7 +104,6 @@ func SetETHDiscoveryURLs(lightSync bool) []string {
 func SetSnapDiscoveryURLs() []string {
 	return snapDiscoveryURLs
 }
-
 
 func (service *ClassicService) Test(ctx context.Context) string {
 	return "total classic"
