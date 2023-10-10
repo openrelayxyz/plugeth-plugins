@@ -33,7 +33,7 @@ import (
 // VerifyEIP1559Header verifies some header attributes which were changed in EIP-1559,
 // - gas limit check
 // - basefee check
-func VerifyEIP1559Header(config ChainConfigurator, parent, header *types.Header) error {
+func VerifyEIP1559Header(config PluginConfigurator, parent, header *types.Header) error {
 	// Verify that the gas limit remains within allowed bounds
 	parentGasLimit := parent.GasLimit
 	if !config.IsEnabled(config.GetEIP1559Transition, parent.Number) {
@@ -56,7 +56,7 @@ func VerifyEIP1559Header(config ChainConfigurator, parent, header *types.Header)
 }
 
 // CalcBaseFee calculates the basefee of the header.
-func CalcBaseFee(config ChainConfigurator, parent *types.Header) *big.Int {
+func CalcBaseFee(config PluginConfigurator, parent *types.Header) *big.Int {
 	// If the current block is the first EIP-1559 block, return the InitialBaseFee.
 	if !config.IsEnabled(config.GetEIP1559Transition, parent.Number) {
 		return new(big.Int).SetUint64(InitialBaseFee)

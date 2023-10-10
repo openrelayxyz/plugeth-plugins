@@ -102,7 +102,7 @@ func (ethash *Ethash) verifyHeader(chain ChainHeaderReader, header, parent *type
 		return fmt.Errorf("invalid gasUsed: have %d, gasLimit %d", header.GasUsed, header.GasLimit)
 	}
 	// Verify the block's gas usage and (if applicable) verify the base fee.
-	if !chain.Config().IsEnabled(chain.Config().GetEIP1559Transition, header.Number) {
+	if !ethash.pluginConfig.IsEnabled(ethash.pluginConfig.GetEIP1559Transition, header.Number) {
 		// Verify BaseFee not present before EIP-1559 fork.
 		if header.BaseFee != nil {
 			return fmt.Errorf("invalid baseFee before fork: have %d, expected 'nil'", header.BaseFee)
@@ -110,7 +110,7 @@ func (ethash *Ethash) verifyHeader(chain ChainHeaderReader, header, parent *type
 		if err := VerifyGaslimit(parent.GasLimit, header.GasLimit); err != nil {
 			return err
 		}
-	} else if err := VerifyEIP1559Header(chain.Config(), parent, header); err != nil {
+	} else if err := VerifyEIP1559Header(ethash.pluginConfig, parent, header); err != nil {
 		// Verify the header's EIP-1559 attributes.
 		return err
 	}
@@ -118,10 +118,10 @@ func (ethash *Ethash) verifyHeader(chain ChainHeaderReader, header, parent *type
 	if diff := new(big.Int).Sub(header.Number, parent.Number); diff.Cmp(big.NewInt(1)) != 0 {
 		return ErrInvalidNumber
 	}
-	if chain.Config().IsEnabledByTime(chain.Config().GetEIP3860TransitionTime, &header.Time) || chain.Config().IsEnabled(chain.Config().GetEIP3860Transition, header.Number) {
+	if ethash.pluginConfig.IsEnabledByTime(ethash.pluginConfig.GetEIP3860TransitionTime, &header.Time) || ethash.pluginConfig.IsEnabled(ethash.pluginConfig.GetEIP3860Transition, header.Number) {
 		return fmt.Errorf("ethash does not support shanghai fork")
 	}
-	if chain.Config().IsEnabledByTime(chain.Config().GetEIP4844TransitionTime, &header.Time) {
+	if ethash.pluginConfig.IsEnabledByTime(ethash.pluginConfig.GetEIP4844TransitionTime, &header.Time) {
 		return fmt.Errorf("ethash does not support cancun fork")
 	}
 	// Verify the engine specific seal securing the block
@@ -131,7 +131,7 @@ func (ethash *Ethash) verifyHeader(chain ChainHeaderReader, header, parent *type
 		}
 	}
 	// If all checks passed, validate any special fields for hard forks
-	if err := VerifyDAOHeaderExtraData(chain.Config(), header); err != nil {
+	if err := VerifyDAOHeaderExtraData(ethash.pluginConfig, header); err != nil {
 		return err
 	}
 	return nil

@@ -36,7 +36,7 @@ var (
 // GetRewards calculates the mining reward.
 // The total reward consists of the static block reward and rewards for
 // included uncles. The coinbase of each uncle block is also calculated.
-func GetRewards(config ChainConfigurator, header *types.Header, uncles []*types.Header) (*big.Int, []*big.Int) {
+func GetRewards(config *PluginConfigurator, header *types.Header, uncles []*types.Header) (*big.Int, []*big.Int) {
 	if config.IsEnabled(config.GetEthashECIP1017Transition, header.Number) {
 		return ecip1017BlockReward(config, header, uncles)
 	}
@@ -65,7 +65,7 @@ func GetRewards(config ChainConfigurator, header *types.Header, uncles []*types.
 
 // AccumulateRewards credits the coinbase of the given block with the mining
 // reward. The coinbase of each uncle block is also rewarded.
-func AccumulateRewards(config ChainConfigurator, state core.RWStateDB, header *types.Header, uncles []*types.Header) {
+func AccumulateRewards(config *PluginConfigurator, state core.RWStateDB, header *types.Header, uncles []*types.Header) {
 	minerReward, uncleRewards := GetRewards(config, header, uncles)
 	for i, uncle := range uncles {
 		state.AddBalance(uncle.Coinbase, uncleRewards[i])
@@ -127,7 +127,7 @@ func GetBlockWinnerRewardByEra(era *big.Int, blockReward *big.Int) *big.Int {
 	return r
 }
 
-func ecip1017BlockReward(config ChainConfigurator, header *types.Header, uncles []*types.Header) (*big.Int, []*big.Int) {
+func ecip1017BlockReward(config *PluginConfigurator, header *types.Header, uncles []*types.Header) (*big.Int, []*big.Int) {
 	blockReward := FrontierBlockReward
 
 	// Ensure value 'era' is configured.
@@ -164,7 +164,7 @@ func GetBlockEra(blockNum, eraLength *big.Int) *big.Int {
 	return new(big.Int).Sub(d, dremainder)
 }
 
-func EthashBlockReward(c ChainConfigurator, n *big.Int) *big.Int {
+func EthashBlockReward(c *PluginConfigurator, n *big.Int) *big.Int {
 	// Select the correct block reward based on chain progression
 	blockReward := FrontierBlockReward
 	if c == nil || n == nil {

@@ -55,7 +55,7 @@ func parent_time_delta(t uint64, p *types.Header) *big.Int {
 //     with the fork specific extra-data set.
 //   - if the node is pro-fork, require blocks in the specific range to have the
 //     unique extra-data set.
-func VerifyDAOHeaderExtraData(config ChainConfigurator, header *types.Header) error {
+func VerifyDAOHeaderExtraData(config PluginConfigurator, header *types.Header) error {
 	// If the config wants the DAO fork, it should validate the extra data.
 	// Otherwise, like any other block or any other config, it should not care.
 	daoForkBlock := config.GetEthashEIP779Transition()
@@ -134,7 +134,7 @@ func has0xPrefix(str string) bool {
 // CalcDifficulty is the difficulty adjustment algorithm. It returns
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
-func CalcDifficulty(config ChainConfigurator, time uint64, parent *types.Header) *big.Int {
+func CalcDifficulty(config *PluginConfigurator, time uint64, parent *types.Header) *big.Int {
 	next := new(big.Int).Add(parent.Number, big1)
 	out := new(big.Int)
 
@@ -200,7 +200,7 @@ func CalcDifficulty(config ChainConfigurator, time uint64, parent *types.Header)
 	exPeriodRef := new(big.Int).Add(parent.Number, big1)
 
 	if config.IsEnabled(config.GetEthashECIP1010PauseTransition, next) {
-		ecip1010Explosion(config, next, exPeriodRef)
+		ecip1010Explosion(*config, next, exPeriodRef)
 	} else if len(config.GetEthashDifficultyBombDelaySchedule()) > 0 {
 		// This logic varies from the original fork-based logic (below) in that
 		// configured delay values are treated as compounding values (-2000000 + -3000000 = -5000000@constantinople)
@@ -317,7 +317,7 @@ func VerifyGaslimit(parentGasLimit, headerGasLimit uint64) error {
 	return nil
 }
 
-func ecip1010Explosion(config ChainConfigurator, next *big.Int, exPeriodRef *big.Int) {
+func ecip1010Explosion(config PluginConfigurator, next *big.Int, exPeriodRef *big.Int) {
 	// https://github.com/ethereumproject/ECIPs/blob/master/ECIPs/ECIP-1010.md
 
 	if next.Uint64() < *config.GetEthashECIP1010ContinueTransition() {

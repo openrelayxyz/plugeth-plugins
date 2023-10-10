@@ -28,6 +28,7 @@ import (
 	"github.com/edsrzf/mmap-go"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
+	"github.com/openrelayxyz/plugeth-utils/restricted/params"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 )
 
@@ -65,7 +66,10 @@ const (
 
 type ChainHeaderReader interface {
 	// Config retrieves the blockchain's chain configuration.
-	Config() ChainConfigurator
+	Config() *params.ChainConfig
+
+	// Config retrieves the blockchain's chain configuration.
+	// PluginConfig() ChainConfigurator
 
 	// CurrentHeader retrieves the current header from the local chain.
 	CurrentHeader() *types.Header

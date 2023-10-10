@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
+	"github.com/openrelayxyz/plugeth-utils/restricted"
 )
 
 var (
