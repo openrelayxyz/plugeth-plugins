@@ -70,6 +70,59 @@ var (
 
 var unixNow int64 = time.Now().Unix()
 
+var ErrInvalidDumpMagic = errors.New("invalid dump magic")
+
+var (
+	// two256 is a big integer representing 2^256
+	two256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
+
+	// sharedEthash is a full instance that can be shared between multiple users.
+	sharedEthash *Ethash
+
+	// algorithmRevision is the data structure version used for file naming.
+	algorithmRevision = 23
+
+	// dumpMagic is a dataset dump header to sanity check a data dump.
+	dumpMagic = []uint32{0xbaddcafe, 0xfee1dead}
+)
+
+func init() {
+	sharedConfig := Config{
+		PowMode:       ModeNormal,
+		CachesInMem:   3,
+		DatasetsInMem: 1,
+	}
+	sharedEthash = New(sharedConfig, nil, false)
+}
+
+// New creates a full sized ethash PoW scheme and starts a background thread for
+// remote mining, also optionally notifying a batch of remote services of new work
+// packages.
+func New(config Config, notify []string, noverify bool) *Ethash {
+	if config.CachesInMem <= 0 {
+		log.Warn("One ethash cache must always be in memory", "requested", config.CachesInMem)
+		config.CachesInMem = 1
+	}
+	if config.CacheDir != "" && config.CachesOnDisk > 0 {
+		log.Info("Disk storage enabled for ethash caches", "dir", config.CacheDir, "count", config.CachesOnDisk)
+	}
+	if config.DatasetDir != "" && config.DatasetsOnDisk > 0 {
+		log.Info("Disk storage enabled for ethash DAGs", "dir", config.DatasetDir, "count", config.DatasetsOnDisk)
+	}
+	ethash := &Ethash{
+		config:   config,
+		// caches:   newlru(config.CachesInMem, newCache),
+		// datasets: newlru(config.DatasetsInMem, newDataset),
+		update:   make(chan struct{}),
+		// hashrate: metrics.NewMeterForced(),
+	}
+	if config.PowMode == ModeShared {
+		ethash.shared = sharedEthash
+	}
+	ethash.remote = startRemoteSealer(ethash, notify, noverify)
+	return ethash
+}
+
 // verifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 // See YP section 4.3.4. "Block Header Validity"
@@ -110,7 +163,7 @@ func (ethash *Ethash) verifyHeader(chain ChainHeaderReader, header, parent *type
 		if err := VerifyGaslimit(parent.GasLimit, header.GasLimit); err != nil {
 			return err
 		}
-	} else if err := VerifyEIP1559Header(ethash.pluginConfig, parent, header); err != nil {
+	} else if err := VerifyEIP1559Header(*ethash.pluginConfig, parent, header); err != nil {
 		// Verify the header's EIP-1559 attributes.
 		return err
 	}
@@ -131,7 +184,7 @@ func (ethash *Ethash) verifyHeader(chain ChainHeaderReader, header, parent *type
 		}
 	}
 	// If all checks passed, validate any special fields for hard forks
-	if err := VerifyDAOHeaderExtraData(ethash.pluginConfig, header); err != nil {
+	if err := VerifyDAOHeaderExtraData(*ethash.pluginConfig, header); err != nil {
 		return err
 	}
 	return nil
@@ -227,6 +280,7 @@ func (ethash *Ethash) dataset(block uint64, async bool) *dataset {
 	// Retrieve the requested ethash dataset
 	epochLength := calcEpochLength(block, ethash.config.ECIP1099Block)
 	epoch := calcEpoch(block, epochLength)
+	log.Error("230", "block", block, "epochLength", epochLength, "ECIP1099Block", ethash.config.ECIP1099Block)
 	current, future := ethash.datasets.get(epoch, epochLength, ethash.config.ECIP1099Block)
 
 	// set async false if ecip-1099 transition in case of regeneratiion bad DAG on disk
@@ -256,8 +310,12 @@ func (ethash *Ethash) dataset(block uint64, async bool) *dataset {
 // by first checking against a list of in-memory caches, then against caches
 // stored on disk, and finally generating one if none can be found.
 func (ethash *Ethash) cache(block uint64) *cache {
+	// var num *uint64
+	// bi := big.NewInt(11700000).Uint64()
+	// num = &bi
 	epochLength := calcEpochLength(block, ethash.config.ECIP1099Block)
 	epoch := calcEpoch(block, epochLength)
+	log.Error("261", "block", block, "epochLength", epochLength, "ECIP1099Block", ethash.config.ECIP1099Block)
 	current, future := ethash.caches.get(epoch, epochLength, ethash.config.ECIP1099Block)
 
 	// Wait for generation finish.
@@ -281,6 +339,7 @@ func (d *dataset) generated() bool {
 // non-nil. The second return value is non-nil if lru thinks that an item will be useful in
 // the near future.
 func (lru *lru[T]) get(epoch uint64, epochLength uint64, ecip1099FBlock *uint64) (item, future T) {
+	log.Error("is it nil", "lru", lru)
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
 
@@ -493,70 +552,86 @@ func (d *dataset) generate(dir string, limit int, lock bool, test bool) {
 	})
 }
 
-func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
-	// Extract some data from the header
-	var (
-		header  = block.Header()
-		hash    = ethash.SealHash(header).Bytes()
-		target  = new(big.Int).Div(two256, header.Difficulty)
-		number  = header.Number.Uint64()
-		dataset = ethash.dataset(number, false)
-	)
-	// Start generating random nonces until we abort or find a good one
-	var (
-		attempts  = int64(0)
-		nonce     = seed
-		powBuffer = new(big.Int)
-	)
-	// logger := ethash.config.Log.New("miner", id)
-	// logger.Trace("Started ethash search for new nonces", "seed", seed)
-	// TODO PM talk to AR regarding these log.New methods
-search:
-	for {
-		select {
-		case <-abort:
-			// Mining terminated, update stats and abort
-			log.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
-			// ethash.hashrate.Mark(attempts)
-			break search
+// func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
+// 	// Extract some data from the header
+// 	var (
+// 		header  = block.Header()
+// 		hash    = ethash.SealHash(header).Bytes()
+// 		target  = new(big.Int).Div(two256, header.Difficulty)
+// 		number  = header.Number.Uint64()
+// 		dataset = ethash.dataset(number, false)
+// 	)
+// 	// Start generating random nonces until we abort or find a good one
+// 	var (
+// 		attempts  = int64(0)
+// 		nonce     = seed
+// 		powBuffer = new(big.Int)
+// 	)
+// 	// logger := ethash.config.Log.New("miner", id)
+// 	// logger.Trace("Started ethash search for new nonces", "seed", seed)
+// 	// TODO PM talk to AR regarding these log.New methods
+// search:
+// 	for {
+// 		select {
+// 		case <-abort:
+// 			// Mining terminated, update stats and abort
+// 			log.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
+// 			// ethash.hashrate.Mark(attempts)
+// 			break search
 
-		default:
-			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
-			attempts++
-			if (attempts % (1 << 15)) == 0 {
-				// ethash.hashrate.Mark(attempts)
-				attempts = 0
-			}
-			// Compute the PoW value of this nonce
-			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
-			if powBuffer.SetBytes(result).Cmp(target) <= 0 {
-				// Correct nonce found, create a new header with it
-				header = types.CopyHeader(header)
-				header.Nonce = types.EncodeNonce(nonce)
-				header.MixDigest = core.BytesToHash(digest)
+// 		default:
+// 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
+// 			attempts++
+// 			if (attempts % (1 << 15)) == 0 {
+// 				// ethash.hashrate.Mark(attempts)
+// 				attempts = 0
+// 			}
+// 			// Compute the PoW value of this nonce
+// 			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
+// 			if powBuffer.SetBytes(result).Cmp(target) <= 0 {
+// 				// Correct nonce found, create a new header with it
+// 				header = types.CopyHeader(header)
+// 				header.Nonce = types.EncodeNonce(nonce)
+// 				header.MixDigest = core.BytesToHash(digest)
 
-				// Seal and return a block (if still needed)
-				select {
-				case found <- block.WithSeal(header):
-					log.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
-				case <-abort:
-					log.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce)
-				}
-				break search
-			}
-			nonce++
-		}
-	}
-	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
-	// during sealing so it's not unmapped while being read.
-	runtime.KeepAlive(dataset)
+// 				// Seal and return a block (if still needed)
+// 				select {
+// 				case found <- block.WithSeal(header):
+// 					log.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
+// 				case <-abort:
+// 					log.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce)
+// 				}
+// 				break search
+// 			}
+// 			nonce++
+// 		}
+// 	}
+// 	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
+// 	// during sealing so it's not unmapped while being read.
+// 	runtime.KeepAlive(dataset)
+// }
+
+// // Threads returns the number of mining threads currently enabled. This doesn't
+// // necessarily mean that mining is running!
+// func (ethash *Ethash) Threads() int {
+// 	ethash.lock.Lock()
+// 	defer ethash.lock.Unlock()
+
+// 	return ethash.threads
+// }
+
+// SeedHash is the seed to use for generating a verification cache and the mining
+// dataset.
+func SeedHash(epoch uint64, epochLength uint64) []byte {
+	return seedHash(epoch, epochLength)
 }
 
-// Threads returns the number of mining threads currently enabled. This doesn't
-// necessarily mean that mining is running!
-func (ethash *Ethash) Threads() int {
-	ethash.lock.Lock()
-	defer ethash.lock.Unlock()
+// CalcEpochLength returns the epoch length for a given block number (ECIP-1099)
+func CalcEpochLength(block uint64, ecip1099FBlock *uint64) uint64 {
+	return calcEpochLength(block, ecip1099FBlock)
+}
 
-	return ethash.threads
+// CalcEpoch returns the epoch for a given block number (ECIP-1099)
+func CalcEpoch(block uint64, epochLength uint64) uint64 {
+	return calcEpoch(block, epochLength)
 }

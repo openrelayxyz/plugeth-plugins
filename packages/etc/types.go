@@ -17,29 +17,12 @@
 package main
 
 import (
-	"context"
 	"math/big"
 	"errors"
-	"sync"
-	"sync/atomic"
-	"time"
-	"os"
-
-	"github.com/edsrzf/mmap-go"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/params"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
-)
-
-var (
-	// algorithmRevision is the data structure version used for file naming.
-	algorithmRevision = 23
-
-	// dumpMagic is a dataset dump header to sanity check a data dump.
-	dumpMagic = []uint32{0xbaddcafe, 0xfee1dead}
-
-	ErrInvalidDumpMagic = errors.New("invalid dump magic")
 )
 
 // Lengths of hashes and addresses in bytes.
@@ -85,58 +68,6 @@ type ChainHeaderReader interface {
 
 	// GetTd retrieves the total difficulty from the database by hash and number.
 	GetTd(hash core.Hash, number uint64) *big.Int
-}
-
-type remoteSealer struct {
-	works        map[core.Hash]*types.Block
-	rates        map[core.Hash]hashrate
-	currentBlock *types.Block
-	currentWork  [4]string
-	notifyCtx    context.Context
-	cancelNotify context.CancelFunc // cancels all notification requests
-	reqWG        sync.WaitGroup     // tracks notification request goroutines
-
-	ethash       *Ethash
-	noverify     bool
-	notifyURLs   []string
-	results      chan<- *types.Block
-	workCh       chan *sealTask   // Notification channel to push new work and relative result channel to remote sealer
-	fetchWorkCh  chan *sealWork   // Channel used for remote sealer to fetch mining work
-	submitWorkCh chan *mineResult // Channel used for remote sealer to submit their mining result
-	fetchRateCh  chan chan uint64 // Channel used to gather submitted hash rate for local or remote sealer.
-	submitRateCh chan *hashrate   // Channel used for remote sealer to submit their mining hashrate
-	requestExit  chan struct{}
-	exitCh       chan struct{}
-}
-
-// hashrate wraps the hash rate submitted by the remote sealer.
-type hashrate struct {
-	id   core.Hash
-	ping time.Time
-	rate uint64
-
-	done chan struct{}
-}
-
-// sealTask wraps a seal block with relative result channel for remote sealer thread.
-type sealTask struct {
-	block   *types.Block
-	results chan<- *types.Block
-}
-
-// sealWork wraps a seal work package for remote sealer.
-type sealWork struct {
-	errc chan error
-	res  chan [4]string
-}
-
-// mineResult wraps the pow solution parameters for the specified block.
-type mineResult struct {
-	nonce     types.BlockNonce
-	mixDigest core.Hash
-	hash      core.Hash
-
-	errc chan error
 }
 
 // ChainReader defines a small collection of methods needed to access the local
@@ -299,9 +230,6 @@ var DisinflationRateQuotient = big.NewInt(4)
 
 var DisinflationRateDivisor  = big.NewInt(5)
 
-// two256 is a big integer representing 2^256
-var two256 = new(big.Int).Exp(big.NewInt(2), big.NewInt(256), big.NewInt(0))
-
 // DAOForkBlockExtra is the block header extra-data field to set for the DAO fork
 // point and a number of consecutive blocks to allow fast/light syncers to correctly
 // pick the side they want  ("dao-hard-fork").
@@ -334,39 +262,6 @@ const (
 	maxEpoch            = 2048    // Max Epoch for included tables
 )
 
-// lru tracks caches or datasets by their last use time, keeping at most N of them.
-type lru[T cacheOrDataset] struct {
-	what string
-	new  func(epoch uint64, epochLength uint64) T
-	mu   sync.Mutex
-	// Items are kept in a LRU cache, but there is a special case:
-	// We always keep an item for (highest seen epoch) + 1 as the 'future item'.
-	cache      BasicLRU[uint64, T]
-	future     uint64
-	futureItem T
-}
-
 type cacheOrDataset interface {
 	*cache | *dataset
-}
-
-// cache wraps an ethash cache with some metadata to allow easier concurrent use.
-type cache struct {
-	epoch       uint64    // Epoch for which this cache is relevant
-	epochLength uint64    // Epoch length (ECIP-1099)
-	dump        *os.File  // File descriptor of the memory mapped cache
-	mmap        mmap.MMap // Memory map itself to unmap before releasing
-	cache       []uint32  // The actual cache data content (may be memory mapped)
-	once        sync.Once // Ensures the cache is generated only once
-}
-
-// dataset wraps an ethash dataset with some metadata to allow easier concurrent use.
-type dataset struct {
-	epoch       uint64      // Epoch for which this cache is relevant
-	epochLength uint64      // Epoch length (ECIP-1099)
-	dump        *os.File    // File descriptor of the memory mapped cache
-	mmap        mmap.MMap   // Memory map itself to unmap before releasing
-	dataset     []uint32    // The actual cache data content
-	once        sync.Once   // Ensures the cache is generated only once
-	done        atomic.Bool // Atomic flag to determine generation status
 }

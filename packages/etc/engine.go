@@ -3,10 +3,8 @@ package main
 import (
 	"sync"
 	"time"
-	"math"
 	"math/big"
 	"math/rand"
-	crand "crypto/rand"
 	"runtime"
 	"errors"
 
@@ -26,13 +24,22 @@ import (
 // }
 
 func CreateEngine(chainConfig *params.ChainConfig, db restricted.Database) consensus.Engine {
-	return &Ethash{}
+	
+	return &Ethash{
+
+		// config:   config,
+		pluginConfig: NewPluginConfig(),
+		// caches:   newlru(config.CachesInMem, newCache),
+		// datasets: newlru(config.DatasetsInMem, newDataset),
+		update:   make(chan struct{}),
+		// hashrate: metrics.NewMeterForced(),
+	}
 }
 
 type Ethash struct {
 	config Config
 
-	pluginConfig PluginConfigurator
+	pluginConfig *PluginConfigurator
 
 	caches   *lru[*cache]   // In memory caches to avoid regenerating too often
 	datasets *lru[*dataset] // In memory datasets to avoid regenerating too often
@@ -54,7 +61,7 @@ type Ethash struct {
 
 }
 
-func (ethash *Ethash) PluginConfig() *PluginConfigurator {
+func NewPluginConfig() *PluginConfigurator {
 	return etc_config
 }
 
@@ -240,7 +247,7 @@ func (ethash *Ethash) Prepare(chain consensus.ChainHeaderReader, header *types.H
 // Finalize implements consensus.Engine, accumulating the block and uncle rewards.
 func (ethash *Ethash) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction, uncles []*types.Header, withdrawals []*types.Withdrawal) {
 	// Accumulate any block and uncle rewards and commit the final state root
-	AccumulateRewards(ethash.PluginConfig(), state, header, uncles)
+	AccumulateRewards(ethash.pluginConfig, state, header, uncles)
 }
 
 // FinalizeAndAssemble implements consensus.Engine, accumulating the block and
@@ -262,115 +269,115 @@ func (ethash *Ethash) FinalizeAndAssemble(chain consensus.ChainHeaderReader, hea
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
-func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
-	// If we're running a fake PoW, simply return a 0 nonce immediately
-	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
-		header := block.Header()
-		header.Nonce, header.MixDigest = types.BlockNonce{}, core.Hash{}
-		select {
-		case results <- block.WithSeal(header):
-		default:
-			ethash.config.Log.Warn("Sealing result is not read by miner", "mode", "fake", "sealhash", ethash.SealHash(block.Header()))
-		}
-		return nil
-	} else if ethash.config.PowMode == ModePoissonFake {
-		go func(header *types.Header) {
-			// Assign random (but non-zero) values to header nonce and mix.
-			header.Nonce = types.EncodeNonce(uint64(rand.Int63n(math.MaxInt64)))
-			b, _ := header.Nonce.MarshalText()
-			header.MixDigest = core.BytesToHash(b)
+// func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+// 	// If we're running a fake PoW, simply return a 0 nonce immediately
+// 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
+// 		header := block.Header()
+// 		header.Nonce, header.MixDigest = types.BlockNonce{}, core.Hash{}
+// 		select {
+// 		case results <- block.WithSeal(header):
+// 		default:
+// 			ethash.config.Log.Warn("Sealing result is not read by miner", "mode", "fake", "sealhash", ethash.SealHash(block.Header()))
+// 		}
+// 		return nil
+// 	} else if ethash.config.PowMode == ModePoissonFake {
+// 		go func(header *types.Header) {
+// 			// Assign random (but non-zero) values to header nonce and mix.
+// 			header.Nonce = types.EncodeNonce(uint64(rand.Int63n(math.MaxInt64)))
+// 			b, _ := header.Nonce.MarshalText()
+// 			header.MixDigest = core.BytesToHash(b)
 
-			// Wait some amount of time.
-			timeout := time.NewTimer(time.Duration(ethash.makePoissonFakeDelay()) * time.Second)
-			defer timeout.Stop()
+// 			// Wait some amount of time.
+// 			timeout := time.NewTimer(time.Duration(ethash.makePoissonFakeDelay()) * time.Second)
+// 			defer timeout.Stop()
 
-			select {
-			case <-stop:
-				return
-			case <-ethash.update:
-				timeout.Stop()
-				if err := ethash.Seal(chain, block, results, stop); err != nil {
-					ethash.config.Log.Error("Failed to restart sealing after update", "err", err)
-				}
-			case <-timeout.C:
-				// Send the results when the timeout expires.
-				select {
-				case results <- block.WithSeal(header):
-				default:
-					ethash.config.Log.Warn("Sealing result is not read by miner", "mode", "fake", "sealhash", ethash.SealHash(block.Header()))
-				}
-			}
-		}(block.Header())
-		return nil
-	}
-	// If we're running a shared PoW, delegate sealing to it
-	if ethash.shared != nil {
-		return ethash.shared.Seal(chain, block, results, stop)
-	}
-	// Create a runner and the multiple search threads it directs
-	abort := make(chan struct{})
+// 			select {
+// 			case <-stop:
+// 				return
+// 			case <-ethash.update:
+// 				timeout.Stop()
+// 				if err := ethash.Seal(chain, block, results, stop); err != nil {
+// 					ethash.config.Log.Error("Failed to restart sealing after update", "err", err)
+// 				}
+// 			case <-timeout.C:
+// 				// Send the results when the timeout expires.
+// 				select {
+// 				case results <- block.WithSeal(header):
+// 				default:
+// 					ethash.config.Log.Warn("Sealing result is not read by miner", "mode", "fake", "sealhash", ethash.SealHash(block.Header()))
+// 				}
+// 			}
+// 		}(block.Header())
+// 		return nil
+// 	}
+// 	// If we're running a shared PoW, delegate sealing to it
+// 	if ethash.shared != nil {
+// 		return ethash.shared.Seal(chain, block, results, stop)
+// 	}
+// 	// Create a runner and the multiple search threads it directs
+// 	abort := make(chan struct{})
 
-	ethash.lock.Lock()
-	threads := ethash.threads
-	if ethash.rand == nil {
-		seed, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
-		if err != nil {
-			ethash.lock.Unlock()
-			return err
-		}
-		ethash.rand = rand.New(rand.NewSource(seed.Int64()))
-	}
-	ethash.lock.Unlock()
-	if threads == 0 {
-		threads = runtime.NumCPU()
-	}
-	if threads < 0 {
-		threads = 0 // Allows disabling local mining without extra logic around local/remote
-	}
-	// Push new work to remote sealer
-	if ethash.remote != nil {
-		ethash.remote.workCh <- &sealTask{block: block, results: results}
-	}
-	var (
-		pend   sync.WaitGroup
-		locals = make(chan *types.Block)
-	)
-	for i := 0; i < threads; i++ {
-		pend.Add(1)
-		go func(id int, nonce uint64) {
-			defer pend.Done()
-			ethash.mine(block, id, nonce, abort, locals)
-		}(i, uint64(ethash.rand.Int63()))
-	}
-	// Wait until sealing is terminated or a nonce is found
-	go func() {
-		var result *types.Block
-		select {
-		case <-stop:
-			// Outside abort, stop all miner threads
-			close(abort)
-		case result = <-locals:
-			// One of the threads found a block, abort all others
-			select {
-			case results <- result:
-			default:
-				ethash.config.Log.Warn("Sealing result is not read by miner", "mode", "local", "sealhash", ethash.SealHash(block.Header()))
-			}
-			close(abort)
-		case <-ethash.update:
-			// Thread count was changed on user request, restart
-			close(abort)
-			if err := ethash.Seal(chain, block, results, stop); err != nil {
-				ethash.config.Log.Error("Failed to restart sealing after update", "err", err)
-			}
-		}
-		// Wait for all miners to terminate and return the block
-		pend.Wait()
-	}()
-	return nil
-}
+// 	ethash.lock.Lock()
+// 	threads := ethash.threads
+// 	if ethash.rand == nil {
+// 		seed, err := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
+// 		if err != nil {
+// 			ethash.lock.Unlock()
+// 			return err
+// 		}
+// 		ethash.rand = rand.New(rand.NewSource(seed.Int64()))
+// 	}
+// 	ethash.lock.Unlock()
+// 	if threads == 0 {
+// 		threads = runtime.NumCPU()
+// 	}
+// 	if threads < 0 {
+// 		threads = 0 // Allows disabling local mining without extra logic around local/remote
+// 	}
+// 	// Push new work to remote sealer
+// 	if ethash.remote != nil {
+// 		ethash.remote.workCh <- &sealTask{block: block, results: results}
+// 	}
+// 	var (
+// 		pend   sync.WaitGroup
+// 		locals = make(chan *types.Block)
+// 	)
+// 	for i := 0; i < threads; i++ {
+// 		pend.Add(1)
+// 		go func(id int, nonce uint64) {
+// 			defer pend.Done()
+// 			ethash.mine(block, id, nonce, abort, locals)
+// 		}(i, uint64(ethash.rand.Int63()))
+// 	}
+// 	// Wait until sealing is terminated or a nonce is found
+// 	go func() {
+// 		var result *types.Block
+// 		select {
+// 		case <-stop:
+// 			// Outside abort, stop all miner threads
+// 			close(abort)
+// 		case result = <-locals:
+// 			// One of the threads found a block, abort all others
+// 			select {
+// 			case results <- result:
+// 			default:
+// 				ethash.config.Log.Warn("Sealing result is not read by miner", "mode", "local", "sealhash", ethash.SealHash(block.Header()))
+// 			}
+// 			close(abort)
+// 		case <-ethash.update:
+// 			// Thread count was changed on user request, restart
+// 			close(abort)
+// 			if err := ethash.Seal(chain, block, results, stop); err != nil {
+// 				ethash.config.Log.Error("Failed to restart sealing after update", "err", err)
+// 			}
+// 		}
+// 		// Wait for all miners to terminate and return the block
+// 		pend.Wait()
+// 	}()
+// 	return nil
+// }
 
-// SealHash returns the hash of a block prior to it being sealed.
+// // SealHash returns the hash of a block prior to it being sealed.
 func (ethash *Ethash) SealHash(header *types.Header) (hash core.Hash) {
 	hasher := sha3.NewLegacyKeccak256()
 
@@ -404,7 +411,7 @@ func (ethash *Ethash) SealHash(header *types.Header) (hash core.Hash) {
 // the difficulty that a new block should have when created at time
 // given the parent block's time and difficulty.
 func (ethash *Ethash) CalcDifficulty(chain consensus.ChainHeaderReader, time uint64, parent *types.Header) *big.Int {
-	return CalcDifficulty(ethash.PluginConfig(), time, parent)
+	return CalcDifficulty(ethash.pluginConfig, time, parent)
 }
 
 func (e *Ethash) APIs(chain consensus.ChainHeaderReader) []core.API {

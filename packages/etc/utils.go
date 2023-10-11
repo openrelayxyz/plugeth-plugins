@@ -18,11 +18,9 @@ import (
 	"runtime"
 	"strconv"
 	"sync"
-	"gonum.org/v1/gonum/stat/distuv"
 
 	"golang.org/x/crypto/sha3"
 	"github.com/edsrzf/mmap-go"
-	exprand "golang.org/x/exp/rand"
 
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
 	"github.com/openrelayxyz/plugeth-utils/restricted/crypto"
@@ -834,21 +832,6 @@ func ensureSize(f *os.File, size int64) error {
 	// - Use posix_fallocate, or
 	// - explicitly fill the file with zeroes.
 	return f.Truncate(size)
-}
-
-// makePoissonFakeDelay uses the ethash.threads value as a mean time (lambda)
-// for a Poisson distribution, returning a random value from
-// that discrete function. I think a Poisson distribution probably
-// fairly accurately models real world block times.
-// Note that this is a hacky way to use ethash.threads since
-// lower values will yield faster blocks, but it saves having
-// to add or modify any more code than necessary.
-func (ethash *Ethash) makePoissonFakeDelay() float64 {
-	p := distuv.Poisson{
-		Lambda: float64(ethash.Threads()),
-		Src:    exprand.NewSource(uint64(time.Now().UnixNano())),
-	}
-	return p.Rand()
 }
 
 // StopRemoteSealer stops the remote sealer

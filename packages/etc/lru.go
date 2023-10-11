@@ -1,8 +1,64 @@
 package main
 
 import (
+	"os"
 	"sync"
+	"sync/atomic"
+
+	"github.com/edsrzf/mmap-go"
 )
+
+// lru tracks caches or datasets by their last use time, keeping at most N of them.
+type lru[T cacheOrDataset] struct {
+	what string
+	new  func(epoch uint64, epochLength uint64) T
+	mu   sync.Mutex
+	// Items are kept in a LRU cache, but there is a special case:
+	// We always keep an item for (highest seen epoch) + 1 as the 'future item'.
+	cache      BasicLRU[uint64, T]
+	future     uint64
+	futureItem T
+}
+
+// cache wraps an ethash cache with some metadata to allow easier concurrent use.
+type cache struct {
+	epoch       uint64    // Epoch for which this cache is relevant
+	epochLength uint64    // Epoch length (ECIP-1099)
+	dump        *os.File  // File descriptor of the memory mapped cache
+	mmap        mmap.MMap // Memory map itself to unmap before releasing
+	cache       []uint32  // The actual cache data content (may be memory mapped)
+	once        sync.Once // Ensures the cache is generated only once
+}
+
+// dataset wraps an ethash dataset with some metadata to allow easier concurrent use.
+type dataset struct {
+	epoch       uint64      // Epoch for which this cache is relevant
+	epochLength uint64      // Epoch length (ECIP-1099)
+	dump        *os.File    // File descriptor of the memory mapped cache
+	mmap        mmap.MMap   // Memory map itself to unmap before releasing
+	dataset     []uint32    // The actual cache data content
+	once        sync.Once   // Ensures the cache is generated only once
+	done        atomic.Bool // Atomic flag to determine generation status
+}
+
+// newlru create a new least-recently-used cache for either the verification caches
+// or the mining datasets.
+func newlru[T cacheOrDataset](maxItems int, new func(epoch uint64, epochLength uint64) T) *lru[T] {
+	var what string
+	switch any(T(nil)).(type) {
+	case *cache:
+		what = "cache"
+	case *dataset:
+		what = "dataset"
+	default:
+		panic("unknown type")
+	}
+	return &lru[T]{
+		what:  what,
+		new:   new,
+		cache: NewBasicLRU[uint64, T](maxItems),
+	}
+}
 
 type BasicLRU[K comparable, V any] struct {
 	list  *list[K]
