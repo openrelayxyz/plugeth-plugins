@@ -846,3 +846,55 @@ func (ethash *Ethash) StopRemoteSealer() error {
 	})
 	return nil
 }
+
+// // ResolvePath resolves path in the instance directory.
+// func ResolvePath(path string) string {
+// 	if filepath.IsAbs(path) {
+// 		return path
+// 	}
+// 	if c.DataDir == "" {
+// 		return ""
+// 	}
+// 	// Backwards-compatibility: ensure that data directory files created
+// 	// by geth 1.4 are used if they exist.
+// 	if warn, isOld := isOldGethResource[path]; isOld {
+// 		oldpath := ""
+// 		if c.name() == "geth" {
+// 			oldpath = filepath.Join(c.DataDir, path)
+// 		}
+// 		if oldpath != "" && FileExist(oldpath) {
+// 			if warn {
+// 				log.Warn("Using deprecated resource file, please move this file to the 'geth' subdirectory of datadir.", "file", oldpath)
+// 			}
+// 			return oldpath
+// 		}
+// 	}
+// 	return filepath.Join(c.instanceDir(), path)
+// }
+
+// // These resources are resolved differently for "geth" instances.
+// var isOldGethResource = map[string]bool{
+// 	"chaindata":          true,
+// 	"nodes":              true,
+// 	"nodekey":            true,
+// 	"static-nodes.json":  false, // no warning for these because they have their
+// 	"trusted-nodes.json": false, // own separate warning.
+// }
+
+// // FileExist checks if a file exists at filePath.
+// func FileExist(filePath string) bool {
+// 	_, err := os.Stat(filePath)
+// 	if err != nil && os.IsNotExist(err) {
+// 		return false
+// 	}
+
+// 	return true
+// }
+
+// // AbsolutePath returns datadir + filename, or filename if it is absolute.
+// func AbsolutePath(datadir string, filename string) string {
+// 	if filepath.IsAbs(filename) {
+// 		return filename
+// 	}
+// 	return filepath.Join(datadir, filename)
+// }

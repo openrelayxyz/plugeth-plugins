@@ -18,22 +18,36 @@ import (
 	trie "github.com/openrelayxyz/plugeth-utils/restricted/hasher"
 	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
+
+	// "github.com/openrelayxyz/cardinal-types/metrics"
 )
 
 // type engine struct {
 // }
 
 func CreateEngine(chainConfig *params.ChainConfig, db restricted.Database) consensus.Engine {
-	
-	return &Ethash{
 
-		// config:   config,
-		pluginConfig: NewPluginConfig(),
-		// caches:   newlru(config.CachesInMem, newCache),
-		// datasets: newlru(config.DatasetsInMem, newDataset),
-		update:   make(chan struct{}),
-		// hashrate: metrics.NewMeterForced(),
+	pluginConfig := NewPluginConfig() 
+
+	defaultEthash := &Config{
+		CacheDir:         "ethash",
+		CachesInMem:      2,
+		CachesOnDisk:     3,
+		CachesLockMmap:   false,
+		DatasetsInMem:    1,
+		DatasetsOnDisk:   2,
+		DatasetsLockMmap: false,
 	}
+
+	defaultEthash.ECIP1099Block = pluginConfig.GetEthashECIP1099Transition()
+
+	ethHash := New(*defaultEthash, nil, false,)
+
+	ethHash.SetThreads(-1) // Disable CPU mining
+
+	ethHash.pluginConfig = pluginConfig
+
+	return ethHash
 }
 
 type Ethash struct {
@@ -49,6 +63,7 @@ type Ethash struct {
 	threads  int           // Number of threads to mine on if mining
 	update   chan struct{} // Notification channel to update mining parameters
 	// hashrate metrics.Meter // Meter tracking the average hashrate TODO PM make conversion to Cardianl metrics library
+	// TODO Philip, does this need to be implemented? cardinal-types metrics does not appear to implement this interface
 	remote   *remoteSealer
 
 	// The fields below are hooks for testing

@@ -123,6 +123,13 @@ func New(config Config, notify []string, noverify bool) *Ethash {
 	return ethash
 }
 
+func (ethash *Ethash) Threads() int {
+	ethash.lock.Lock()
+	defer ethash.lock.Unlock()
+
+	return ethash.threads
+}
+
 // verifyHeader checks whether a header conforms to the consensus rules of the
 // stock Ethereum ethash engine.
 // See YP section 4.3.4. "Block Header Validity"
@@ -552,6 +559,8 @@ func (d *dataset) generate(dir string, limit int, lock bool, test bool) {
 	})
 }
 
+
+
 // func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
 // 	// Extract some data from the header
 // 	var (
@@ -619,6 +628,23 @@ func (d *dataset) generate(dir string, limit int, lock bool, test bool) {
 
 // 	return ethash.threads
 // }
+
+func (ethash *Ethash) SetThreads(threads int) {
+	ethash.lock.Lock()
+	defer ethash.lock.Unlock()
+
+	// If we're running a shared PoW, set the thread count on that instead
+	if ethash.shared != nil {
+		ethash.shared.SetThreads(threads)
+		return
+	}
+	// Update the threads and ping any running seal to pull in any changes
+	ethash.threads = threads
+	select {
+	case ethash.update <- struct{}{}:
+	default:
+	}
+}
 
 // SeedHash is the seed to use for generating a verification cache and the mining
 // dataset.

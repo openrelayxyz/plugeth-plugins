@@ -36,7 +36,7 @@ import (
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	// "github.com/openrelayxyz/plugeth-utils/restricted"
-	// "github.com/openrelayxyz/plugeth-utils/restricted/consensus"
+	"github.com/openrelayxyz/plugeth-utils/restricted/consensus"
 	// "github.com/openrelayxyz/plugeth-utils/restricted/params"
 	// trie "github.com/openrelayxyz/plugeth-utils/restricted/hasher"
 	// "github.com/openrelayxyz/plugeth-utils/restricted/rlp"
@@ -75,7 +75,7 @@ func (ethash *Ethash) makePoissonFakeDelay() float64 {
 
 // Seal implements consensus.Engine, attempting to find a nonce that satisfies
 // the block's difficulty requirements.
-func (ethash *Ethash) Seal(chain ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
+func (ethash *Ethash) Seal(chain consensus.ChainHeaderReader, block *types.Block, results chan<- *types.Block, stop <-chan struct{}) error {
 	// If we're running a fake PoW, simply return a 0 nonce immediately
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		header := block.Header()
@@ -200,22 +200,21 @@ func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan s
 		nonce     = seed
 		powBuffer = new(big.Int)
 	)
-	logger := ethash.config.Log.New("miner", id)
-	logger.Trace("Started ethash search for new nonces", "seed", seed)
+	log.Trace("Started ethash search for new nonces", "seed", seed)
 search:
 	for {
 		select {
 		case <-abort:
 			// Mining terminated, update stats and abort
-			logger.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
-			ethash.hashrate.Mark(attempts)
+			log.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
+			// ethash.hashrate.Mark(attempts)
 			break search
 
 		default:
 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
 			attempts++
 			if (attempts % (1 << 15)) == 0 {
-				ethash.hashrate.Mark(attempts)
+				// ethash.hashrate.Mark(attempts)
 				attempts = 0
 			}
 			// Compute the PoW value of this nonce
@@ -229,9 +228,9 @@ search:
 				// Seal and return a block (if still needed)
 				select {
 				case found <- block.WithSeal(header):
-					logger.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
+					log.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
 				case <-abort:
-					logger.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce)
+					log.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce)
 				}
 				break search
 			}
@@ -404,9 +403,11 @@ func (s *remoteSealer) makeWork(block *types.Block) {
 	hash := s.ethash.SealHash(block.Header())
 	epochLength := calcEpochLength(block.NumberU64(), s.ethash.config.ECIP1099Block)
 	epoch := calcEpoch(block.NumberU64(), epochLength)
-	s.currentWork[0] = hash.Hex()
-	s.currentWork[1] = core.BytesToHash(SeedHash(epoch, epochLength)).Hex()
-	s.currentWork[2] = core.BytesToHash(new(big.Int).Div(two256, block.Difficulty()).Bytes()).Hex()
+	s.currentWork[0] = hexutil.Encode(hash[:])
+	h1 := core.BytesToHash(SeedHash(epoch, epochLength))
+	s.currentWork[1] = hexutil.Encode(h1[:])
+	h2 := core.BytesToHash(new(big.Int).Div(two256, block.Difficulty()).Bytes())
+	s.currentWork[2] = hexutil.Encode(h2[:]) 
 	s.currentWork[3] = hexutil.EncodeBig(block.Number())
 
 	// Trace the seal work fetched by remote sealer.
