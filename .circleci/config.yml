@@ -4,12 +4,12 @@ version: 2.1
 jobs:
   test:
     docker:
-      - image: cimg/go:1.19.4
+      - image: cimg/go:1.21.0
     steps:
       - checkout
   build_geth_push:
     docker: # run the steps with Docker
-      - image: cimg/go:1.19.4 # ...with this image as the primary container
+      - image: cimg/go:1.21.0 # ...with this image as the primary container
       # this is where all `steps` will run
     steps:
       - checkout
