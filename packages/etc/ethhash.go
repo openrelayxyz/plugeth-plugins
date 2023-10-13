@@ -95,6 +95,18 @@ func init() {
 	sharedEthash = New(sharedConfig, nil, false)
 }
 
+// newCache creates a new ethash verification cache.
+func newCache(epoch uint64, epochLength uint64) *cache {
+	return &cache{epoch: epoch, epochLength: epochLength}
+}
+
+// newDataset creates a new ethash mining dataset and returns it as a plain Go
+// interface to be usable in an LRU cache.
+func newDataset(epoch uint64, epochLength uint64) *dataset {
+	return &dataset{epoch: epoch, epochLength: epochLength}
+}
+
+
 // New creates a full sized ethash PoW scheme and starts a background thread for
 // remote mining, also optionally notifying a batch of remote services of new work
 // packages.
@@ -111,8 +123,8 @@ func New(config Config, notify []string, noverify bool) *Ethash {
 	}
 	ethash := &Ethash{
 		config:   config,
-		// caches:   newlru(config.CachesInMem, newCache),
-		// datasets: newlru(config.DatasetsInMem, newDataset),
+		caches:   newlru(config.CachesInMem, newCache),
+		datasets: newlru(config.DatasetsInMem, newDataset),
 		update:   make(chan struct{}),
 		// hashrate: metrics.NewMeterForced(),
 	}

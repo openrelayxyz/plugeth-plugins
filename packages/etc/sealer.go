@@ -321,7 +321,7 @@ func startRemoteSealer(ethash *Ethash, urls []string, noverify bool) *remoteSeal
 
 func (s *remoteSealer) loop() {
 	defer func() {
-		s.ethash.config.Log.Trace("Ethash remote sealer is exiting")
+		log.Trace("Ethash remote sealer is exiting")
 		s.cancelNotify()
 		s.reqWG.Wait()
 		close(s.exitCh)
