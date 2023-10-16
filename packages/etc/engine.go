@@ -1,10 +1,8 @@
 package main
 
 import (
-	"sync"
 	"time"
 	"math/big"
-	"math/rand"
 	"runtime"
 	"errors"
 
@@ -30,7 +28,7 @@ func CreateEngine(chainConfig *params.ChainConfig, db restricted.Database) conse
 	pluginConfig := NewPluginConfig() 
 
 	defaultEthash := &Config{
-		CacheDir:         "ethash",
+		CacheDir:         "/media/philip/rivet_data/etc/",
 		CachesInMem:      2,
 		CachesOnDisk:     3,
 		CachesLockMmap:   false,
@@ -50,32 +48,6 @@ func CreateEngine(chainConfig *params.ChainConfig, db restricted.Database) conse
 	log.Error("RETURNED ENGINE", "engine", ethHash)
 
 	return ethHash
-}
-
-type Ethash struct {
-	config Config
-
-	pluginConfig *PluginConfigurator
-
-	caches   *lru[*cache]   // In memory caches to avoid regenerating too often
-	datasets *lru[*dataset] // In memory datasets to avoid regenerating too often
-
-	// Mining related fields
-	rand     *rand.Rand    // Properly seeded random source for nonces
-	threads  int           // Number of threads to mine on if mining
-	update   chan struct{} // Notification channel to update mining parameters
-	// hashrate metrics.Meter // Meter tracking the average hashrate TODO PM make conversion to Cardianl metrics library
-	// TODO Philip, does this need to be implemented? cardinal-types metrics does not appear to implement this interface
-	remote   *remoteSealer
-
-	// The fields below are hooks for testing
-	shared    *Ethash       // Shared PoW verifier to avoid cache regeneration
-	fakeFail  uint64        // Block number which fails PoW check even in fake mode
-	fakeDelay time.Duration // Time delay to sleep for before returning from verify
-
-	lock      sync.Mutex // Ensures thread safety for the in-memory caches and mining fields
-	closeOnce sync.Once  // Ensures exit channel will not be closed twice.
-
 }
 
 func NewPluginConfig() *PluginConfigurator {
@@ -172,19 +144,6 @@ func (ethash *Ethash) VerifyHeaders(chain consensus.ChainHeaderReader, headers [
 		}
 	}()
 	return abort, errorsOut
-}
-
-func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, index int, unixNow int64) error {
-	var parent *types.Header
-	if index == 0 {
-		parent = chain.GetHeader(headers[0].ParentHash, headers[0].Number.Uint64()-1)
-	} else if headers[index-1].Hash() == headers[index].ParentHash {
-		parent = headers[index-1]
-	}
-	if parent == nil {
-		return ErrUnknownAncestor
-	}
-	return ethash.verifyHeader(chain, headers[index], parent, false, seals[index], unixNow)
 }
 
 // VerifyUncles verifies that the given block's uncles conform to the consensus

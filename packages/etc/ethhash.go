@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 	"bytes"
+	"math/rand"
+	"sync"
 	"errors"
 	"math/big"
 	"runtime"
@@ -12,6 +14,7 @@ import (
 
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted/types"
+	"github.com/openrelayxyz/plugeth-utils/restricted/consensus"
 )
 
 // Config are the configuration parameters of the ethash.
@@ -93,6 +96,32 @@ func init() {
 		DatasetsInMem: 1,
 	}
 	sharedEthash = New(sharedConfig, nil, false)
+}
+
+type Ethash struct {
+	config Config
+
+	pluginConfig *PluginConfigurator
+
+	caches   *lru[*cache]   // In memory caches to avoid regenerating too often
+	datasets *lru[*dataset] // In memory datasets to avoid regenerating too often
+
+	// Mining related fields
+	rand     *rand.Rand    // Properly seeded random source for nonces
+	threads  int           // Number of threads to mine on if mining
+	update   chan struct{} // Notification channel to update mining parameters
+	// hashrate metrics.Meter // Meter tracking the average hashrate TODO PM make conversion to Cardianl metrics library
+	// TODO Philip, does this need to be implemented? cardinal-types metrics does not appear to implement this interface
+	remote   *remoteSealer
+
+	// The fields below are hooks for testing
+	shared    *Ethash       // Shared PoW verifier to avoid cache regeneration
+	fakeFail  uint64        // Block number which fails PoW check even in fake mode
+	fakeDelay time.Duration // Time delay to sleep for before returning from verify
+
+	lock      sync.Mutex // Ensures thread safety for the in-memory caches and mining fields
+	closeOnce sync.Once  // Ensures exit channel will not be closed twice.
+
 }
 
 // newCache creates a new ethash verification cache.
@@ -209,22 +238,23 @@ func (ethash *Ethash) verifyHeader(chain ChainHeaderReader, header, parent *type
 	return nil
 }
 
-// func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, index int, unixNow int64) error {
-// 	var parent *types.Header
-// 	if index == 0 {
-// 		parent = chain.GetHeader(headers[0].ParentHash, headers[0].Number.Uint64()-1)
-// 	} else if headers[index-1].Hash() == headers[index].ParentHash {
-// 		parent = headers[index-1]
-// 	}
-// 	if parent == nil {
-// 		return consensus.ErrUnknownAncestor
-// 	}
-// 	return ethash.verifyHeader(chain, headers[index], parent, false, seals[index], unixNow)
-// }
+func (ethash *Ethash) verifyHeaderWorker(chain consensus.ChainHeaderReader, headers []*types.Header, seals []bool, index int, unixNow int64) error {
+	var parent *types.Header
+	if index == 0 {
+		parent = chain.GetHeader(headers[0].ParentHash, headers[0].Number.Uint64()-1)
+	} else if headers[index-1].Hash() == headers[index].ParentHash {
+		parent = headers[index-1]
+	}
+	if parent == nil {
+		return ErrUnknownAncestor
+	}
+	return ethash.verifyHeader(chain, headers[index], parent, false, seals[index], unixNow)
+}
 
 // verifySeal checks whether a block satisfies the PoW difficulty requirements,
 // either using the usual ethash cache for it, or alternatively using a full DAG
 // to make remote mining fast.
+
 func (ethash *Ethash) verifySeal(chain ChainHeaderReader, header *types.Header, fulldag bool) error {
 	// If we're running a fake PoW, accept any seal as valid
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModePoissonFake || ethash.config.PowMode == ModeFullFake {
@@ -570,76 +600,6 @@ func (d *dataset) generate(dir string, limit int, lock bool, test bool) {
 		}
 	})
 }
-
-
-
-// func (ethash *Ethash) mine(block *types.Block, id int, seed uint64, abort chan struct{}, found chan *types.Block) {
-// 	// Extract some data from the header
-// 	var (
-// 		header  = block.Header()
-// 		hash    = ethash.SealHash(header).Bytes()
-// 		target  = new(big.Int).Div(two256, header.Difficulty)
-// 		number  = header.Number.Uint64()
-// 		dataset = ethash.dataset(number, false)
-// 	)
-// 	// Start generating random nonces until we abort or find a good one
-// 	var (
-// 		attempts  = int64(0)
-// 		nonce     = seed
-// 		powBuffer = new(big.Int)
-// 	)
-// 	// logger := ethash.config.Log.New("miner", id)
-// 	// logger.Trace("Started ethash search for new nonces", "seed", seed)
-// 	// TODO PM talk to AR regarding these log.New methods
-// search:
-// 	for {
-// 		select {
-// 		case <-abort:
-// 			// Mining terminated, update stats and abort
-// 			log.Trace("Ethash nonce search aborted", "attempts", nonce-seed)
-// 			// ethash.hashrate.Mark(attempts)
-// 			break search
-
-// 		default:
-// 			// We don't have to update hash rate on every nonce, so update after after 2^X nonces
-// 			attempts++
-// 			if (attempts % (1 << 15)) == 0 {
-// 				// ethash.hashrate.Mark(attempts)
-// 				attempts = 0
-// 			}
-// 			// Compute the PoW value of this nonce
-// 			digest, result := hashimotoFull(dataset.dataset, hash, nonce)
-// 			if powBuffer.SetBytes(result).Cmp(target) <= 0 {
-// 				// Correct nonce found, create a new header with it
-// 				header = types.CopyHeader(header)
-// 				header.Nonce = types.EncodeNonce(nonce)
-// 				header.MixDigest = core.BytesToHash(digest)
-
-// 				// Seal and return a block (if still needed)
-// 				select {
-// 				case found <- block.WithSeal(header):
-// 					log.Trace("Ethash nonce found and reported", "attempts", nonce-seed, "nonce", nonce)
-// 				case <-abort:
-// 					log.Trace("Ethash nonce found but discarded", "attempts", nonce-seed, "nonce", nonce)
-// 				}
-// 				break search
-// 			}
-// 			nonce++
-// 		}
-// 	}
-// 	// Datasets are unmapped in a finalizer. Ensure that the dataset stays live
-// 	// during sealing so it's not unmapped while being read.
-// 	runtime.KeepAlive(dataset)
-// }
-
-// // Threads returns the number of mining threads currently enabled. This doesn't
-// // necessarily mean that mining is running!
-// func (ethash *Ethash) Threads() int {
-// 	ethash.lock.Lock()
-// 	defer ethash.lock.Unlock()
-
-// 	return ethash.threads
-// }
 
 func (ethash *Ethash) SetThreads(threads int) {
 	ethash.lock.Lock()

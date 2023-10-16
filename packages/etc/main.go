@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"path/filepath"
+	"math/big"
+	// "path/filepath"
+	// "encoding/json"
 	"strings"
 
 	"github.com/openrelayxyz/plugeth-utils/core"
@@ -56,7 +58,41 @@ func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) 
 	}
 }
 
-var Flags string = "classic"
+func Is1559(*big.Int) bool {
+	return false
+}
+
+func InitializeNode(node core.Node, backend restricted.Backend) {
+	db := backend.ChainDb()
+
+	cfg := []byte(`{
+		"chainId": 61,
+		"networkId": 1,
+		"homesteadBlock": 1150000,
+		"daoForkBlock": null,
+		"daoForkSupport": false,
+		"eip150Block": 2500000,
+		"eip155Block": 3000000,
+		"eip158Block": 8772000,
+		"byzantiumBlock": 8772000,
+		"constantinopleBlock": 9573000,
+		"petersburgBlock": 9573000,
+		"istanbulBlock": 10500839,
+		"berlinBlock": 13189133,
+		"londonBlock": 14525000,
+		"ethash": {}
+	}`)
+
+	hash := core.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
+
+	log.Error("Inside of initialize node")
+	
+	if err := db.Put(append([]byte("ethereum-config-"), hash.Bytes()...), cfg); err != nil {
+		log.Error("from the plugin dd .put error", "err", err)
+	}
+}
+
+// var Flags string = "classic"
 
 func GetAPIs(stack core.Node, backend core.Backend) []core.API {
 	return []core.API{
@@ -73,9 +109,9 @@ func ForkIDs() ([]uint64, []uint64) {
 	return forkBlockIds, forkTimeIds
 }
 
-func SetDefaultDataDir(path string) string {
-	return filepath.Join(path, "classic")
-}
+// func SetDefaultDataDir(path string) string {
+// 	return filepath.Join(path, "classic")
+// }
 
 func SetNetworkId() *uint64 {
 	var networkId *uint64

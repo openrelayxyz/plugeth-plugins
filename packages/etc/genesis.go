@@ -7,7 +7,7 @@ func GenesisBlock() []byte {
 			"networkId": 1,
 			"homesteadBlock": 1150000,
 			"daoForkBlock": null,
-			"daoForkSupport": true,
+			"daoForkSupport": false,
 			"eip150Block": 2500000,
 			"eip155Block": 3000000,
 			"eip158Block": 8772000,
