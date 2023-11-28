@@ -8,6 +8,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/openrelayxyz/plugeth-utils/core"
 	"github.com/openrelayxyz/plugeth-utils/restricted"
+	"github.com/openrelayxyz/plugeth-utils/restricted/crypto"
 	"github.com/openrelayxyz/plugeth-utils/restricted/hexutil"
 	"github.com/openrelayxyz/plugeth-utils/restricted/rlp"
 	"io"
@@ -162,6 +163,30 @@ func (su *stateUpdate) DecodeRLP(s *rlp.Stream) error {
 	return nil
 }
 
+var (
+	EmptyRootHash  = core.HexToHash("56e81f171bcc55a6ff8345e692c0f86e5b48e01b996cadc001622fb5e363b421")
+	EmptyCodeHash = crypto.Keccak256Hash(nil)
+)
+
+type Account struct {
+	Nonce    uint64
+	Balance  *big.Int
+	Root     []byte
+	CodeHash []byte
+}
+
+func normalizeAccount(acct *Account) {
+	if acct.Balance == nil {
+		acct.Balance = new(big.Int)
+	}
+	if bytes.Equal(acct.Root, EmptyRootHash.Bytes()) {
+		acct.Root = []byte{}
+	}
+	if bytes.Equal(acct.CodeHash, EmptyCodeHash.Bytes()) {
+		acct.CodeHash = []byte{}
+	}
+}
+
 func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.Hash]struct{}, accounts map[core.Hash][]byte, storage map[core.Hash]map[core.Hash][]byte, codeUpdates map[core.Hash][]byte) {
 	if backend == nil {
 		log.Warn("State update called before InitializeNode", "root", blockRoot)
@@ -169,25 +194,24 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.H
 	}
 	t, err := backend.GetTrie(parentRoot)
 	if err != nil {
-		log.Error("Error getting trie", "root", parentRoot)
+		log.Error("Error getting trie", "root", parentRoot, "err", err)
+		return
 	}
 
 	for hashedAddr, v := range accounts {
 		parentV := t.GetKey(hashedAddr.Bytes())
-		var parentAcct, acct core.StateAccount
+		var parentAcct, acct Account
 		if err := rlp.DecodeBytes(v, &acct); err != nil {
-			log.Error("Error decoding acct", "err", err)
-		}
-		if acct.Balance == nil {
-			acct.Balance = new(big.Int)
-		}
-		if parentAcct.Balance == nil {
-			parentAcct.Balance = new(big.Int)
+			log.Error("Error decoding acct", "err", err, "acctData", v)
+			continue
 		}
 		if err := rlp.DecodeBytes(parentV, &parentAcct); err != nil {
-			log.Error("Error decoding parentAcct", "err", err)
+			log.Error("Error decoding parentAcct", "err", err, "acctData", parentV)
+			continue
 		}
-		if acct.Nonce == parentAcct.Nonce && acct.Root == parentAcct.Root && bytes.Equal(acct.CodeHash, parentAcct.CodeHash) && acct.Balance.Cmp(parentAcct.Balance) == 0 {
+		normalizeAccount(&acct)
+		normalizeAccount(&parentAcct)
+		if acct.Nonce == parentAcct.Nonce && bytes.Equal(acct.Root, parentAcct.Root) && bytes.Equal(acct.CodeHash, parentAcct.CodeHash) && acct.Balance.Cmp(parentAcct.Balance) == 0 {
 			log.Error("StateUpdate account equal to parent", "block", blockRoot, "parent", parentRoot, "acctHash", hashedAddr)
 		}
 		// Nonce    uint64
