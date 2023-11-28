@@ -179,11 +179,11 @@ func normalizeAccount(acct *Account) {
 	if acct.Balance == nil {
 		acct.Balance = new(big.Int)
 	}
-	if bytes.Equal(acct.Root, EmptyRootHash.Bytes()) {
-		acct.Root = []byte{}
+	if len(acct.Root) == 0 {
+		acct.Root = EmptyRootHash.Bytes()
 	}
-	if bytes.Equal(acct.CodeHash, EmptyCodeHash.Bytes()) {
-		acct.CodeHash = []byte{}
+	if len(acct.CodeHash) == 0 {
+		acct.CodeHash = EmptyCodeHash.Bytes()
 	}
 }
 
@@ -199,19 +199,17 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.H
 	}
 
 	for hashedAddr, v := range accounts {
-		parentV := t.GetKey(hashedAddr.Bytes())
-		var parentAcct, acct Account
+		parentAcct, err := t.GetAccountByHash(hashedAddr)
+		if err != nil {
+			log.Error("Error getting parentacct", "err", err)
+		}
+		var acct Account
 		if err := rlp.DecodeBytes(v, &acct); err != nil {
 			log.Error("Error decoding acct", "err", err, "acctData", v)
 			continue
 		}
-		if err := rlp.DecodeBytes(parentV, &parentAcct); err != nil {
-			log.Error("Error decoding parentAcct", "err", err, "acctData", parentV)
-			continue
-		}
 		normalizeAccount(&acct)
-		normalizeAccount(&parentAcct)
-		if acct.Nonce == parentAcct.Nonce && bytes.Equal(acct.Root, parentAcct.Root) && bytes.Equal(acct.CodeHash, parentAcct.CodeHash) && acct.Balance.Cmp(parentAcct.Balance) == 0 {
+		if acct.Nonce == parentAcct.Nonce && bytes.Equal(acct.Root, parentAcct.Root.Bytes()) && bytes.Equal(acct.CodeHash, parentAcct.CodeHash) && acct.Balance.Cmp(parentAcct.Balance) == 0 {
 			log.Error("StateUpdate account equal to parent", "block", blockRoot, "parent", parentRoot, "acctHash", hashedAddr)
 		}
 		// Nonce    uint64
