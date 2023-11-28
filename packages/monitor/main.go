@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math/big"
 	"bytes"
 	"strings"
 	"encoding/json"
@@ -176,6 +177,12 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.H
 		var parentAcct, acct core.StateAccount
 		if err := rlp.DecodeBytes(v, &acct); err != nil {
 			log.Error("Error decoding acct", "err", err)
+		}
+		if acct.Balance == nil {
+			acct.Balance = new(big.Int)
+		}
+		if parentAcct.Balance == nil {
+			parentAcct.Balance = new(big.Int)
 		}
 		if err := rlp.DecodeBytes(parentV, &parentAcct); err != nil {
 			log.Error("Error decoding parentAcct", "err", err)
