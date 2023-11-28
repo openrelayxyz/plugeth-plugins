@@ -202,6 +202,7 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.H
 		parentAcct, err := t.GetAccountByHash(hashedAddr)
 		if err != nil {
 			log.Error("Error getting parentacct", "err", err)
+			continue
 		}
 		var acct Account
 		if err := rlp.DecodeBytes(v, &acct); err != nil {
