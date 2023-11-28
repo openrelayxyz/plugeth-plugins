@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"strings"
 	"encoding/json"
 	lru "github.com/hashicorp/golang-lru"
@@ -165,12 +166,35 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.H
 		log.Warn("State update called before InitializeNode", "root", blockRoot)
 		return
 	}
-	su := &stateUpdate{
-		Destructs: destructs,
-		Accounts: accounts,
-		Storage: storage,
-		Code: codeUpdates,
+	t, err := backend.GetTrie(parentRoot)
+	if err != nil {
+		log.Error("Error getting trie", "root", parentRoot)
 	}
 
-	log.Error("envoking state update monitor", "accounts", su.Accounts)
+	for hashedAddr, v := range accounts {
+		parentV := t.GetKey(hashedAddr.Bytes())
+		var parentAcct, acct core.StateAccount
+		if err := rlp.DecodeBytes(v, &acct); err != nil {
+			log.Error("Error decoding acct", "err", err)
+		}
+		if err := rlp.DecodeBytes(parentV, &parentAcct); err != nil {
+			log.Error("Error decoding parentAcct", "err", err)
+		}
+		if acct.Nonce == parentAcct.Nonce && acct.Root == parentAcct.Root && bytes.Equal(acct.CodeHash, parentAcct.CodeHash) && acct.Balance.Cmp(parentAcct.Balance) == 0 {
+			log.Error("StateUpdate account equal to parent", "block", blockRoot, "parent", parentRoot, "acctHash", hashedAddr)
+		}
+		// Nonce    uint64
+		// Balance  *big.Int
+		// Root     Hash // merkle root of the storage trie
+		// CodeHash []byte
+
+	}
+	// su := &stateUpdate{
+	// 	Destructs: destructs,
+	// 	Accounts: accounts,
+	// 	Storage: storage,
+	// 	Code: codeUpdates,
+	// }
+
+	// log.Error("envoking state update monitor", "accounts", su.Accounts)
 }
