@@ -11,8 +11,8 @@ github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d/go.mod h1:i
 github.com/holiman/uint256 v1.2.4 h1:jUc4Nk8fm9jZabQuqr2JzednajVmBpC+oiTiXZJEApU=
 github.com/holiman/uint256 v1.2.4/go.mod h1:EOMSn4q6Nyt9P6efbI3bueV4e1b3dGlUCXeiRV4ng7E=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
-github.com/openrelayxyz/plugeth-utils v1.4.0 h1:tuvb8m49ZRG6A9ehLdbDPD6TQRKcQrk4Fcp/gXsX4NI=
-github.com/openrelayxyz/plugeth-utils v1.4.0/go.mod h1:VpDN61dxy64zGff05F0adujR5enD/JEdXBkTQ+PaIsQ=
+github.com/openrelayxyz/plugeth-utils v1.5.0-rc1 h1:Olv7nbe3wh8oABgPN3CAWeFVlSX0QiOX6QFRj4gUXTQ=
+github.com/openrelayxyz/plugeth-utils v1.5.0-rc1/go.mod h1:VpDN61dxy64zGff05F0adujR5enD/JEdXBkTQ+PaIsQ=
 golang.org/x/crypto v0.17.0 h1:r8bRNjWL3GshPW3gkd+RpvzWrZAwPS49OmTGZ/uhM4k=
 golang.org/x/crypto v0.17.0/go.mod h1:gCAAfMLgwOJRpTjQ2zCCt2OcSfYMTeZVSRtQlPC7Nq4=
 golang.org/x/sys v0.15.0 h1:h48lPFYpsTvQJZF4EKyI4aLHaev3CxivZmv7yZig9pc=
