@@ -239,7 +239,7 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int)
 	}
 	var block types.Block
 	if err := rlp.DecodeBytes(blockBytes, &block); err != nil {
-		log.Error("Failed to decode block", "hash", hash, "err", err)
+		log.Error("Failed to decode block", "hash", hash, "b", hexutil.Bytes(blockBytes), "err", err)
 		return
 	}
 	newHead(block, hash, td)
