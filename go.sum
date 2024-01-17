@@ -36,8 +36,8 @@ github.com/mmcloughlin/addchain v0.4.0/go.mod h1:A86O+tHqZLMNO4w6ZZ4FlVQEadcoqky
 github.com/mmcloughlin/profile v0.1.1/go.mod h1:IhHD7q1ooxgwTgjxQYkACGA77oFTDdFVejUS1/tS/qU=
 github.com/openrelayxyz/cardinal-types v1.1.1 h1:Lw6Lr/eiHYCnLi851rciCzw/1S3UytUX7kj5zh3QS/Y=
 github.com/openrelayxyz/cardinal-types v1.1.1/go.mod h1:8aaMg6i94V0hhWe3V6Fzc0RSggMx+/Kabsf5o7wMf/E=
-github.com/openrelayxyz/plugeth-utils v1.5.0-rc3 h1:CZJflDwkjBkY08bR4B/N+kLy3933lVjigjW6EvLvbEw=
-github.com/openrelayxyz/plugeth-utils v1.5.0-rc3/go.mod h1:4c6CMYUVCsaFUeVjIw35Apsix5bgOo64Fx1mdrMGWhQ=
+github.com/openrelayxyz/plugeth-utils v1.5.0-rc7 h1:9Bw4PWaMXeeP1DypVqRoNFLhCu20D/++QQJNv4lsRZU=
+github.com/openrelayxyz/plugeth-utils v1.5.0-rc7/go.mod h1:COwKAuTZIsCouCOrIDBhvHZqpbOO1Ojgdy5KTvL8mJg=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
@@ -45,9 +45,9 @@ github.com/pubnub/go-metrics-statsd v0.0.0-20170124014003-7da61f429d6b/go.mod h1
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475/go.mod h1:bCqnVzQkZxMG4s8nGwiZ5l3QUCyqpo9Y+/ZMZ9VjZe4=
 github.com/savaki/cloudmetrics v0.0.0-20160314183336-c82bfea3c09e/go.mod h1:KzTM/+pS9NbNPoC7/EBZq77Za7His7hp1NJhA0DrMns=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
-github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
-github.com/supranational/blst v0.3.11-0.20230124161941-ca03e11a3ff2 h1:wh1wzwAhZBNiZO37uWS/nDaKiIwHz4mDo4pnA+fqTO0=
-github.com/supranational/blst v0.3.11-0.20230124161941-ca03e11a3ff2/go.mod h1:jZJtfjgudtNl4en1tzwPIV3KjUnQUvG3/j+w+fVonLw=
+github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
+github.com/supranational/blst v0.3.11 h1:LyU6FolezeWAhvQk0k6O/d49jqgO52MSDDfYgbeoEm4=
+github.com/supranational/blst v0.3.11/go.mod h1:jZJtfjgudtNl4en1tzwPIV3KjUnQUvG3/j+w+fVonLw=
 golang.org/x/crypto v0.17.0 h1:r8bRNjWL3GshPW3gkd+RpvzWrZAwPS49OmTGZ/uhM4k=
 golang.org/x/crypto v0.17.0/go.mod h1:gCAAfMLgwOJRpTjQ2zCCt2OcSfYMTeZVSRtQlPC7Nq4=
 golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd/go.mod h1:CfG3xpIq0wQ8r1q4Su4UZFWDARRcnwPjda9FqA0JpMk=
