@@ -27,6 +27,8 @@ var (
 func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) {
 	log = logger
 	blockGapDuration = time.Duration(*blockGapFlag) * time.Second
+	buff = new(bytes.Buffer)
+	writer = bufio.NewWriter(buff)
 }
 
 func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int) {
