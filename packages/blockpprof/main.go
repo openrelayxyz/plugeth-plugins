@@ -34,12 +34,13 @@ func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) 
 func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int) {
 	pprof.StopCPUProfile()
 	if buff != nil && time.Since(lastNewHead) > blockGapDuration {
-		if fd, err := os.Create(filepath.Join(*blockGapFolder, hash.String())); err == nil {
+		pprofFilePath := filepath.Join(*blockGapFolder, hash.String())
+		if fd, err := os.Create(pprofFilePath); err == nil {
 			writer.Flush()
 			fd.Write(buff.Bytes())
 			fd.Close()
 		} else {
-			log.Warn("Could not create file to flush pprof", "err", err)
+			log.Warn("Could not create file to flush pprof", "err", err, "path", pprofFilePath)
 		}
 	}
 	buff.Truncate(0)
@@ -47,4 +48,5 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int)
 	if err := pprof.StartCPUProfile(writer); err != nil {
 		log.Warn("Error starting cpu profile", "err", err)
 	}
+	lastNewHead = time.Now()
 }
