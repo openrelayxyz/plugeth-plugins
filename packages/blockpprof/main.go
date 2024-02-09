@@ -18,7 +18,7 @@ var (
 	writer *bufio.Writer
 	lastNewHead time.Time
 	Flags = *flag.NewFlagSet("blockpprof", flag.ContinueOnError)
-	blockGapFlag = Flags.Int("pprof.block.gap", 4, "The number of seconds between blocks that should trigger a pprof flush")
+	blockGapFlag = Flags.Int("pprof.block.gap", 6, "The number of seconds between blocks that should trigger a pprof flush")
 	blockGapFolder = Flags.String("pprof.folder", "/var/lib/ethereum/pprofs", "Directory where pprof flushes should be written")
 	blockGapDuration = 12 * time.Second
 
