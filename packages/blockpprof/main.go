@@ -39,7 +39,7 @@ func NewHead(blockBytes []byte, hash core.Hash, logsBytes [][]byte, td *big.Int)
 			fd.Write(buff.Bytes())
 			fd.Close()
 		} else {
-			log.Warn("Could not create file to flush pprof")
+			log.Warn("Could not create file to flush pprof", "err", err)
 		}
 	}
 	buff.Truncate(0)
