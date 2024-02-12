@@ -21,7 +21,7 @@ var (
 	lastNewHead time.Time
 	Flags = *flag.NewFlagSet("blockpprof", flag.ContinueOnError)
 	blockGapFlag = Flags.Int("pprof.block.gap", 6, "The number of seconds between blocks that should trigger a pprof flush")
-	blockProfile = Flags.Bool("pprof.block.profile", false, "Enable blocking profiling")
+	blockProfile = Flags.Bool("pprof.block.profile", true, "Enable blocking profiling")
 	blockGapFolder = Flags.String("pprof.folder", "/var/lib/ethereum/pprofs", "Directory where pprof flushes should be written")
 	blockGapDuration = 12 * time.Second
 
