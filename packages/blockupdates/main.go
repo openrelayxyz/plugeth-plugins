@@ -27,6 +27,7 @@ var (
 	snapshotFlagName = "snapshot"
 	log core.Logger
 	blockEvents core.Feed
+	suCh chan *stateUpdateWithRoot
 )
 
 
@@ -36,6 +37,11 @@ type stateUpdate struct {
 	Accounts map[core.Hash][]byte
 	Storage map[core.Hash]map[core.Hash][]byte
 	Code map[core.Hash][]byte
+}
+
+type stateUpdateWithRoot struct {
+	su *stateUpdate
+	root core.Hash
 }
 
 
@@ -152,6 +158,7 @@ func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) 
 	blockEvents = pl.GetFeed()
 	cache, _ = lru.New(128)
 	recentEmits, _ = lru.New(128)
+	suCh = make(chan *stateUpdateWithRoot, 128)
 	if !ctx.Bool(snapshotFlagName) {
 		log.Warn("Snapshots are required for StateUpdate plugins, but are currently disabled. State Updates will be unavailable")
 	}
@@ -168,6 +175,18 @@ func Initialize(ctx core.Context, loader core.PluginLoader, logger core.Logger) 
 		ctx.Set(wsApiFlagName, v+",plugeth")
 	}
 	log.Info("Loaded block updater plugin")
+	go func () {
+		for su := range suCh {
+			data, err := rlp.EncodeToBytes(su.su)
+			if err != nil {
+				log.Error("Failed to encode state update", "root", su.root, "err", err)
+			}
+			if err := backend.ChainDb().Put(append([]byte("su"), su.root.Bytes()...), data); err != nil {
+				log.Error("Failed to store state update", "root", su.root, "err", err)
+			}
+			log.Debug("Stored state update", "root", su.root)
+		}
+	}()
 }
 
 
@@ -194,16 +213,7 @@ func StateUpdate(blockRoot core.Hash, parentRoot core.Hash, destructs map[core.H
 		Code: codeUpdates,
 	}
 	cache.Add(blockRoot, su)
-	data, err := rlp.EncodeToBytes(su)
-	if err != nil {
-		log.Error("Failed to encode state update", "root", blockRoot, "err", err)
-		return
-	}
-	if err := backend.ChainDb().Put(append([]byte("su"), blockRoot.Bytes()...), data); err != nil {
-		log.Error("Failed to store state update", "root", blockRoot, "err", err)
-		return
-	}
-	log.Debug("Stored state update", "blockRoot", blockRoot)
+	suCh <- &stateUpdateWithRoot{su: su, root: blockRoot}
 }
 
 // AppendAncient removes our state update records from leveldb as the
