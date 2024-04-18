@@ -19,8 +19,8 @@ require (
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/openrelayxyz/cardinal-types v1.1.1 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
-	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/crypto v0.21.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
