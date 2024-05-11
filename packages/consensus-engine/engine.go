@@ -70,9 +70,9 @@ func (e *engine) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	header.UncleHash = core.HexToHash("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
 	return nil
 }
-func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction,uncles []*types.Header, withdrawals []*types.Withdrawal) {
+func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, body *types.body) {
 }
-func (e *engine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt, withdrawals []*types.Withdrawal) (*types.Block, error) {
+func (e *engine) FinalizeAndAssemble((chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, body *types.body)) (*types.Block, error) {
 	if header.BaseFee == nil {
 		header.BaseFee = new(big.Int)
 
