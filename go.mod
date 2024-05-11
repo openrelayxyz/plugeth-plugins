@@ -7,7 +7,7 @@ toolchain go1.22.2
 require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
 	github.com/holiman/uint256 v1.2.4
-	github.com/openrelayxyz/plugeth-utils v1.5.0
+	github.com/openrelayxyz/plugeth-utils v1.6.0-geth-v1.14.0-0
 )
 
 require (
@@ -26,5 +26,3 @@ require (
 	golang.org/x/sys v0.19.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
-
-replace github.com/openrelayxyz/plugeth-utils => /home/philip/src/rivet/plugeth_superspace/plugeth-utils
