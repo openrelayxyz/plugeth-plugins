@@ -58,7 +58,6 @@ func (e *engine) VerifyHeaders(chain consensus.ChainHeaderReader, headers []*typ
 	return quit, err
 }
 func (e *engine) VerifyUncles(chain consensus.ChainReader, block *types.Block) error {
-	// log.Error("inside of verify uncles")
 	return nil
 }
 func (e *engine) Prepare(chain consensus.ChainHeaderReader, header *types.Header) error {
@@ -70,16 +69,16 @@ func (e *engine) Prepare(chain consensus.ChainHeaderReader, header *types.Header
 	header.UncleHash = core.HexToHash("1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347")
 	return nil
 }
-func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, body *types.body) {
+func (e *engine) Finalize(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, body *types.Body) {
 }
-func (e *engine) FinalizeAndAssemble((chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, body *types.body)) (*types.Block, error) {
+func (e *engine) FinalizeAndAssemble(chain consensus.ChainHeaderReader, header *types.Header, state core.RWStateDB, body *types.Body, receipts []*types.Receipt) (*types.Block, error) {
 	if header.BaseFee == nil {
 		header.BaseFee = new(big.Int)
 
 	}
 	header.Root = state.IntermediateRoot(false)
 	hasher := hasher.NewStackTrie(nil)
-	block := types.NewBlockWithWithdrawals(header, txs, uncles, receipts, withdrawals, hasher)
+	block := types.NewBlockWithWithdrawals(header, body.Transactions, body.Uncles, receipts, body.Withdrawals, hasher)
 	return block, nil
 
 }
