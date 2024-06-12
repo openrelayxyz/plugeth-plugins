@@ -23,6 +23,6 @@ require (
 	github.com/supranational/blst v0.3.11 // indirect
 	golang.org/x/crypto v0.22.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
