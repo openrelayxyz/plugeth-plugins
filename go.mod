@@ -1,8 +1,6 @@
 module github.com/openrelayxyz/plugeth-plugins
 
-go 1.21
-
-toolchain go1.22.2
+go 1.22
 
 require (
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d
