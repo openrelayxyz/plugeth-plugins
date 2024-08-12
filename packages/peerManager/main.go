@@ -72,8 +72,10 @@ func peeringSequence() {
 
 	for message := range nodes {
 		if message == selfNode {
+			log.Error("self node consumed")
 			continue
 		} else {
+			log.Error("recieved peer", "pper", message)
 			sessionPeerService.attachPeers(message)
 		}
 	}
