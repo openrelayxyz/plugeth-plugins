@@ -31,7 +31,6 @@ func InitializeNode(stack core.Node, b restricted.Backend) {
 }
 
 func BlockChain() {
-	log.Error("this is the borker", "bork", *peerBroker)
 	if *peerBroker == "" {
 		panic(fmt.Sprintf("no broker provided for peer manager plugin"))
 	}

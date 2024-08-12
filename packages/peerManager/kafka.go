@@ -31,9 +31,9 @@ func createProducer(broker, topic string) (sarama.AsyncProducer, error) {
 }
 
 func consume(topic, broker string) {
-    brokers := []string{broker}
+    brokers, config := transports.ParseKafkaURL(strings.TrimPrefix(broker, "kafka://"))
 
-    consumer, err := sarama.NewConsumer(brokers, nil)
+    consumer, err := sarama.NewConsumer(brokers, config)
     if err != nil {
         log.Error("Failed to start Sarama consumer", "err", err)
     }
