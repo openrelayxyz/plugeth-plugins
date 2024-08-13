@@ -45,27 +45,3 @@ func createConsumer(broker, topic string) (sarama.PartitionConsumer, error) {
 
     return partitionConsumer, nil
 }
-
-// func consume(topic, broker string) {
-//     brokers, config := transports.ParseKafkaURL(strings.TrimPrefix(broker, "kafka://"))
-
-//     consumer, err := sarama.NewConsumer(brokers, config)
-//     if err != nil {
-//         log.Error("Failed to start Sarama consumer", "err", err)
-//     }
-
-//     partitionConsumer, err := consumer.ConsumePartition(topic, 0, sarama.OffsetOldest)
-//     if err != nil {
-//         log.Error("Failed to start Sarama partition consumer", "err", err)
-//     }
-
-//     log.Error("this is the type of consumer", "consumer", reflect.TypeOf(partitionConsumer))
-
-//     go func() {
-//         for message := range partitionConsumer.Messages() {
-//             nodes <- string(message.Value)
-//         }
-//     }()
-
-//      <-exit 
-// }

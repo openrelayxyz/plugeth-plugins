@@ -60,11 +60,13 @@ func peeringSequence() {
 	producer, err := createProducer(*peerBroker, chainTopic)
 	if err != nil {
 		log.Error("failed to acquire kafka producer, peer manager plugin", "err", err)
+		return
 	}
 
 	consumer, err := createConsumer(*peerBroker, chainTopic)
 	if err != nil {
 		log.Error("failed to acquire kafka consumer, peer manager plugin", "err", err)
+		return
 	}
 
 	msg := &sarama.ProducerMessage{
@@ -82,10 +84,8 @@ func peeringSequence() {
 
 	for message := range nodes {
 		if message == selfNode {
-			log.Error("self node consumed")
 			continue
 		} else {
-			log.Error("consumed peer")
 			sessionPeerService.attachPeers(message)
 		}
 	}
