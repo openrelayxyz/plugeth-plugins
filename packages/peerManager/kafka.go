@@ -31,7 +31,7 @@ func createProducer(broker, topic string) (sarama.AsyncProducer, error) {
     return producer, nil
 }
 
-func createConsumer(topic, broker string) (sarama.PartitionConsumer, error) {
+func createConsumer(broker, topic string) (sarama.PartitionConsumer, error) {
 
     consumer, err := sarama.NewConsumer(sessionBrokers, sessionKafkaConfig)
     if err != nil {

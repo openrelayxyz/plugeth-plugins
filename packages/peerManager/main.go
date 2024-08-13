@@ -84,7 +84,8 @@ func peeringSequence() {
 		if message == selfNode {
 			log.Error("self node consumed")
 			continue
-		} else {log.Error("consumed peer")
+		} else {
+			log.Error("consumed peer")
 			sessionPeerService.attachPeers(message)
 		}
 	}
