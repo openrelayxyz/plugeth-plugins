@@ -13,6 +13,8 @@ var (
 	log core.Logger
 	httpApiFlagName = "http.api"
 	sessionStack core.Node
+	sessionBrokers []string
+	sessionKafkaConfig *sarama.Config
 	nodes = make(chan string, 5)
 	exit = make(chan struct{}, 1)
 
@@ -60,6 +62,11 @@ func peeringSequence() {
 		log.Error("failed to acquire kafka producer, peer manager plugin", "err", err)
 	}
 
+	consumer, err := createConsumer(*peerBroker, chainTopic)
+	if err != nil {
+		log.Error("failed to acquire kafka consumer, peer manager plugin", "err", err)
+	}
+
 	msg := &sarama.ProducerMessage{
 	        Topic: chainTopic,
 	        Value: sarama.StringEncoder(selfNode),
@@ -67,14 +74,17 @@ func peeringSequence() {
 
 	producer.Input() <- msg
 
-	go consume(chainTopic, *peerBroker)
+	go func() {
+		for message := range consumer.Messages() {
+            nodes <- string(message.Value)
+        }
+	}()
 
 	for message := range nodes {
 		if message == selfNode {
 			log.Error("self node consumed")
 			continue
-		} else {
-			log.Error("recieved peer", "pper", message)
+		} else {log.Error("consumed peer")
 			sessionPeerService.attachPeers(message)
 		}
 	}
