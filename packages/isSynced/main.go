@@ -55,14 +55,14 @@ func (service *IsSyncedService) IsSynced(ctx context.Context) (interface{}, erro
 	if err != nil {
 		return nil, err
 	}
-	block := &types.Block{}
+	blockHeader := &types.Header{}
 	var x []peerinfo
 	err = client.Call(&x, "admin_peers")
 	peers := false
-	if err := rlp.DecodeBytes(service.backend.CurrentBlock(), block); err != nil {
+	if err := rlp.DecodeBytes(service.backend.CurrentBlock(), blockHeader); err != nil {
 		return nil, err
 	}
-	totalDifficulty := service.backend.GetTd(ctx, block.Hash())
+	totalDifficulty := service.backend.GetTd(ctx, blockHeader.Hash())
 	y := len(x)
 	if y > 0 && totalDifficulty != nil {
 		for i := range x {
@@ -76,12 +76,12 @@ func (service *IsSyncedService) IsSynced(ctx context.Context) (interface{}, erro
 	if progress.HighestBlock() == 0 {
 		peers = false
 	}
-	if time.Now().Unix()-int64(block.Time()) < 60 {
+	if time.Now().Unix()-int64(blockHeader.Time) < 60 {
 		peers = true
 	}
 	highest := progress.HighestBlock()
-	if highest < block.NumberU64() {
-		highest = block.NumberU64()
+	if highest < blockHeader.Number.Uint64() {
+		highest = blockHeader.Number.Uint64()
 	}
 	return map[string]interface{}{
 		"startingBlock":       fmt.Sprintf("%#x", (progress.StartingBlock())),
